@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "epsilonLowReRoughWallTPFvPatchScalarField.H"
+#include "nutLowReRoughWallTPFvPatchScalarField.H"
 #include "RASModel.H"
 #include "turbulentPotential.H"
 #include "fvPatchFieldMapper.H"
@@ -41,11 +41,11 @@ namespace RASModels
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
-void epsilonLowReRoughWallTPFvPatchScalarField::checkType()
+void nutLowReRoughWallTPFvPatchScalarField::checkType()
 {
     if (!patch().isWall())
     {
-        FatalErrorIn("epsilonLowReRoughWallTPFvPatchScalarField::checkType()")
+        FatalErrorIn("nutLowReRoughWallTPFvPatchScalarField::checkType()")
             << "Invalid wall function specification" << nl
             << "    Patch type for patch " << patch().name()
             << " must be wall" << nl
@@ -55,7 +55,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::checkType()
 }
 
 
-scalar epsilonLowReRoughWallTPFvPatchScalarField::calcYPlusLam
+scalar nutLowReRoughWallTPFvPatchScalarField::calcYPlusLam
 (
     const scalar kappa,
     const scalar E
@@ -73,7 +73,7 @@ scalar epsilonLowReRoughWallTPFvPatchScalarField::calcYPlusLam
 
 
 
-void epsilonLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
+void nutLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
 {
     os.writeKeyword("Cmu") << Cmu_ << token::END_STATEMENT << nl;
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
@@ -84,7 +84,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) c
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
+nutLowReRoughWallTPFvPatchScalarField::nutLowReRoughWallTPFvPatchScalarField
 (
     const fvPatch& p,
     const DimensionedField<scalar, volMesh>& iF
@@ -101,9 +101,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 }
 
 
-epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
+nutLowReRoughWallTPFvPatchScalarField::nutLowReRoughWallTPFvPatchScalarField
 (
-    const epsilonLowReRoughWallTPFvPatchScalarField& ptf,
+    const nutLowReRoughWallTPFvPatchScalarField& ptf,
     const fvPatch& p,
     const DimensionedField<scalar, volMesh>& iF,
     const fvPatchFieldMapper& mapper
@@ -120,7 +120,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 }
 
 
-epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
+nutLowReRoughWallTPFvPatchScalarField::nutLowReRoughWallTPFvPatchScalarField
 (
     const fvPatch& p,
     const DimensionedField<scalar, volMesh>& iF,
@@ -138,9 +138,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 }
 
 
-epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
+nutLowReRoughWallTPFvPatchScalarField::nutLowReRoughWallTPFvPatchScalarField
 (
-    const epsilonLowReRoughWallTPFvPatchScalarField& wfpsf
+    const nutLowReRoughWallTPFvPatchScalarField& wfpsf
 )
 :
     fixedValueFvPatchScalarField(wfpsf),
@@ -154,9 +154,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 }
 
 
-epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
+nutLowReRoughWallTPFvPatchScalarField::nutLowReRoughWallTPFvPatchScalarField
 (
-    const epsilonLowReRoughWallTPFvPatchScalarField& wfpsf,
+    const nutLowReRoughWallTPFvPatchScalarField& wfpsf,
     const DimensionedField<scalar, volMesh>& iF
 )
 :
@@ -173,7 +173,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
+void nutLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 {
     if (updated())
     {
@@ -188,40 +188,27 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const scalarField& y = rasModel.y()[patchI];
 	
 	const volScalarField& nuw = db().lookupObject<volScalarField>("nu");
-	const volScalarField& nutw = db().lookupObject<volScalarField>("nut");
 	const volScalarField& kr = db().lookupObject<volScalarField>("k");
+	const volScalarField& epsr = db().lookupObject<volScalarField>("epsilon");
 	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
-	const scalarField magVort = mag(vort.boundaryField()[patchI]);
+	//const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
+	//const scalarField magVort = mag(vort.boundaryField()[patchI]);
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
     
     const scalar Cmu25 = pow(Cmu_, 0.25);
-	scalar epsC = 0.257;
+	const scalar Cmu12 = pow(Cmu_, 0.5);
 	
-	tmp<scalarField> tepsw(new scalarField(patch().size(), 0.0));
-    scalarField& epsw = *this;
+    scalarField& nutw = *this;
 
     forAll(Uw, faceI)
     {
-        label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-		
-		// Use epsilon constant region formula
-		if(kPlus<=5.0){
-			epsC = 0.257;
-		}else if(kPlus>5.0 && kPlus<=50.0){
-			epsC = 0.0625 + 0.268*pow(1.0-(kPlus/50.0),3.0);
-		}else if(kPlus>50.0 && kPlus<=100.0){
-			epsC = 0.0625 - (0.0025/50.0)*(kPlus-50.0);
-		}else{
-			epsC = 0.06;
-		}
-		
-        epsw[faceI] = epsC*pow((nuw.boundaryField()[patchI][faceI]+0.833*nutw.boundaryField()[patchI][faceI])*magGradUw[faceI],2.0)/nuw.boundaryField()[patchI][faceI];
+        //label faceCellI = patch().faceCells()[faceI];		
+		//scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
+        //scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
+        nutw[faceI] = Cmu_*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*kr.boundaryField()[patchI][faceI]/epsr.boundaryField()[patchI][faceI];
     }
 	
 	//operator == (kw);
@@ -230,7 +217,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 }
 
 
-tmp<scalarField> epsilonLowReRoughWallTPFvPatchScalarField::yPlus() const
+tmp<scalarField> nutLowReRoughWallTPFvPatchScalarField::yPlus() const
 {
     const label patchI = patch().index();
 
@@ -246,7 +233,7 @@ tmp<scalarField> epsilonLowReRoughWallTPFvPatchScalarField::yPlus() const
 }
 
 
-void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
+void nutLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
 {
     fvPatchField<scalar>::write(os);
     writeLocalEntries(os);
@@ -256,7 +243,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeField(fvPatchScalarField, epsilonLowReRoughWallTPFvPatchScalarField);
+makePatchTypeField(fvPatchScalarField, nutLowReRoughWallTPFvPatchScalarField);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

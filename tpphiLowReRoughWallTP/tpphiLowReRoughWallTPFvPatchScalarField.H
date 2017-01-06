@@ -22,7 +22,7 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::incompressible::RASModels::kLowReRoughWallTPFvPatchScalarField
+    Foam::incompressible::RASModels::tpphiLowReRoughWallTPFvPatchScalarField
 
 Description
     Boundary condition for turbulent (kinematic) viscosity when using wall
@@ -30,12 +30,12 @@ Description
     - replicates OpenFOAM v1.5 (and earlier) behaviour
 
 SourceFiles
-    kLowReRoughWallTPFvPatchScalarField.C
+    tpphiLowReRoughWallTPFvPatchScalarField.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef kLowReRoughWallTPFvPatchScalarField_H
-#define kLowReRoughWallTPFvPatchScalarField_H
+#ifndef tpphiLowReRoughWallTPFvPatchScalarField_H
+#define tpphiLowReRoughWallTPFvPatchScalarField_H
 
 #include "fixedValueFvPatchFields.H"
 
@@ -49,10 +49,10 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-             Class kLowReRoughWallTPFvPatchScalarField Declaration
+             Class tpphiLowReRoughWallTPFvPatchScalarField Declaration
 \*---------------------------------------------------------------------------*/
 
-class kLowReRoughWallTPFvPatchScalarField
+class tpphiLowReRoughWallTPFvPatchScalarField
 :
     public fixedValueFvPatchScalarField
 {
@@ -92,20 +92,20 @@ protected:
 public:
 
     //- Runtime type information
-    TypeName("kLowReRoughWallTP");
+    TypeName("tpphiLowReRoughWallTP");
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        kLowReRoughWallTPFvPatchScalarField
+        tpphiLowReRoughWallTPFvPatchScalarField
         (
             const fvPatch&,
             const DimensionedField<scalar, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        kLowReRoughWallTPFvPatchScalarField
+        tpphiLowReRoughWallTPFvPatchScalarField
         (
             const fvPatch&,
             const DimensionedField<scalar, volMesh>&,
@@ -113,20 +113,20 @@ public:
         );
 
         //- Construct by mapping given
-        //  kLowReRoughWallTPFvPatchScalarField
+        //  tpphiLowReRoughWallTPFvPatchScalarField
         //  onto a new patch
-        kLowReRoughWallTPFvPatchScalarField
+        tpphiLowReRoughWallTPFvPatchScalarField
         (
-            const kLowReRoughWallTPFvPatchScalarField&,
+            const tpphiLowReRoughWallTPFvPatchScalarField&,
             const fvPatch&,
             const DimensionedField<scalar, volMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        kLowReRoughWallTPFvPatchScalarField
+        tpphiLowReRoughWallTPFvPatchScalarField
         (
-            const kLowReRoughWallTPFvPatchScalarField&
+            const tpphiLowReRoughWallTPFvPatchScalarField&
         );
 
         //- Construct and return a clone
@@ -134,14 +134,14 @@ public:
         {
             return tmp<fvPatchScalarField>
             (
-                new kLowReRoughWallTPFvPatchScalarField(*this)
+                new tpphiLowReRoughWallTPFvPatchScalarField(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        kLowReRoughWallTPFvPatchScalarField
+        tpphiLowReRoughWallTPFvPatchScalarField
         (
-            const kLowReRoughWallTPFvPatchScalarField&,
+            const tpphiLowReRoughWallTPFvPatchScalarField&,
             const DimensionedField<scalar, volMesh>&
         );
 
@@ -153,7 +153,7 @@ public:
         {
             return tmp<fvPatchScalarField>
             (
-                new kLowReRoughWallTPFvPatchScalarField(*this, iF)
+                new tpphiLowReRoughWallTPFvPatchScalarField(*this, iF)
             );
         }
 

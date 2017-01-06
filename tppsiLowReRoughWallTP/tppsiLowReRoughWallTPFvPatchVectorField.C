@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "kLowReRoughWallTPFvPatchScalarField.H"
+#include "tppsiLowReRoughWallTPFvPatchVectorField.H"
 #include "RASModel.H"
 #include "turbulentPotential.H"
 #include "fvPatchFieldMapper.H"
@@ -41,11 +41,11 @@ namespace RASModels
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
-void kLowReRoughWallTPFvPatchScalarField::checkType()
+void tppsiLowReRoughWallTPFvPatchVectorField::checkType()
 {
     if (!patch().isWall())
     {
-        FatalErrorIn("kLowReRoughWallTPFvPatchScalarField::checkType()")
+        FatalErrorIn("tppsiLowReRoughWallTPFvPatchVectorField::checkType()")
             << "Invalid wall function specification" << nl
             << "    Patch type for patch " << patch().name()
             << " must be wall" << nl
@@ -55,7 +55,7 @@ void kLowReRoughWallTPFvPatchScalarField::checkType()
 }
 
 
-scalar kLowReRoughWallTPFvPatchScalarField::calcYPlusLam
+scalar tppsiLowReRoughWallTPFvPatchVectorField::calcYPlusLam
 (
     const scalar kappa,
     const scalar E
@@ -73,7 +73,7 @@ scalar kLowReRoughWallTPFvPatchScalarField::calcYPlusLam
 
 
 
-void kLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
+void tppsiLowReRoughWallTPFvPatchVectorField::writeLocalEntries(Ostream& os) const
 {
     os.writeKeyword("Cmu") << Cmu_ << token::END_STATEMENT << nl;
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
@@ -84,13 +84,13 @@ void kLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
+tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
 (
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF
+    const DimensionedField<vector, volMesh>& iF
 )
 :
-    fixedValueFvPatchScalarField(p, iF),
+    fixedValueFvPatchVectorField(p, iF),
     Cmu_(0.09),
     kappa_(0.41),
     E_(9.8),
@@ -101,15 +101,15 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
 }
 
 
-kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
+tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
 (
-    const kLowReRoughWallTPFvPatchScalarField& ptf,
+    const tppsiLowReRoughWallTPFvPatchVectorField& ptf,
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
+    const DimensionedField<vector, volMesh>& iF,
     const fvPatchFieldMapper& mapper
 )
 :
-    fixedValueFvPatchScalarField(ptf, p, iF, mapper),
+    fixedValueFvPatchVectorField(ptf, p, iF, mapper),
     Cmu_(ptf.Cmu_),
     kappa_(ptf.kappa_),
     E_(ptf.E_),
@@ -120,14 +120,14 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
 }
 
 
-kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
+tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
 (
     const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
+    const DimensionedField<vector, volMesh>& iF,
     const dictionary& dict
 )
 :
-    fixedValueFvPatchScalarField(p, iF, dict),
+    fixedValueFvPatchVectorField(p, iF, dict),
     Cmu_(dict.lookupOrDefault<scalar>("Cmu", 0.09)),
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
@@ -138,12 +138,12 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
 }
 
 
-kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
+tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
 (
-    const kLowReRoughWallTPFvPatchScalarField& wfpsf
+    const tppsiLowReRoughWallTPFvPatchVectorField& wfpsf
 )
 :
-    fixedValueFvPatchScalarField(wfpsf),
+    fixedValueFvPatchVectorField(wfpsf),
     Cmu_(wfpsf.Cmu_),
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
@@ -154,13 +154,13 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
 }
 
 
-kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
+tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
 (
-    const kLowReRoughWallTPFvPatchScalarField& wfpsf,
-    const DimensionedField<scalar, volMesh>& iF
+    const tppsiLowReRoughWallTPFvPatchVectorField& wfpsf,
+    const DimensionedField<vector, volMesh>& iF
 )
 :
-    fixedValueFvPatchScalarField(wfpsf, iF),
+    fixedValueFvPatchVectorField(wfpsf, iF),
     Cmu_(wfpsf.Cmu_),
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
@@ -173,7 +173,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
+void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 {
     if (updated())
     {
@@ -197,27 +197,22 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
-    
-    const scalar Cmu25 = pow(Cmu_, 0.25);
 	
-	tmp<scalarField> tkw(new scalarField(patch().size(), 0.0));
-    scalarField& kw = *this;
+    vectorField& tppsiw = *this;
 
     forAll(Uw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
 		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-        kw[faceI] = min(1.0,kPlus/90.0)*(nuw.boundaryField()[patchI][faceI]+nutw.boundaryField()[patchI][faceI])*magGradUw[faceI]/0.3;
+        tppsiw[faceI] = nutw.boundaryField()[patchI][faceI]*vort.boundaryField()[patchI][faceI]/kr.boundaryField()[patchI][faceI];
     }
 	
-	//operator == (kw);
-
-    fixedValueFvPatchScalarField::updateCoeffs();
+    fixedValueFvPatchVectorField::updateCoeffs();
 }
 
 
-tmp<scalarField> kLowReRoughWallTPFvPatchScalarField::yPlus() const
+tmp<scalarField> tppsiLowReRoughWallTPFvPatchVectorField::yPlus() const
 {
     const label patchI = patch().index();
 
@@ -233,9 +228,9 @@ tmp<scalarField> kLowReRoughWallTPFvPatchScalarField::yPlus() const
 }
 
 
-void kLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
+void tppsiLowReRoughWallTPFvPatchVectorField::write(Ostream& os) const
 {
-    fvPatchField<scalar>::write(os);
+    fvPatchField<vector>::write(os);
     writeLocalEntries(os);
     writeEntry("value", os);
 }
@@ -243,7 +238,7 @@ void kLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeField(fvPatchScalarField, kLowReRoughWallTPFvPatchScalarField);
+makePatchTypeField(fvPatchVectorField, tppsiLowReRoughWallTPFvPatchVectorField);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
