@@ -205,7 +205,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         label faceCellI = patch().faceCells()[faceI];		
 		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-        tpphiw[faceI] = pow((1.0/5.5)*log(kPlus) - (3.0*kappa_/5.5),2.0);		
+        tpphiw[faceI] = pow((1.0/5.5)*log(kPlus) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];		
     }
 	
 	//operator == (kw);
