@@ -25,7 +25,6 @@ License
 
 #include "kLowReRoughWallTPFvPatchScalarField.H"
 #include "RASModel.H"
-#include "turbulentPotential.H"
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
 #include "addToRunTimeSelectionTable.H"
@@ -182,18 +181,20 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
 	// Get patch indices
     const label patchI = patch().index();
+	const fvMesh& mesh = patch().boundaryMesh().mesh();
     
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& nuw = db().lookupObject<volScalarField>("nu");
-	const volScalarField& nutw = db().lookupObject<volScalarField>("nut");
-	const volScalarField& kr = db().lookupObject<volScalarField>("k");
-	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
-	const scalarField magVort = mag(vort.boundaryField()[patchI]);
+	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
+	const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
+		
+	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
+	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
@@ -201,18 +202,24 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const scalar Cmu25 = pow(Cmu_, 0.25);
 	const scalar Cmu12 = pow(Cmu_, 0.5);
 	
-	tmp<scalarField> tkw(new scalarField(patch().size(), 0.0));
-    scalarField& kw = *this;
-
-    forAll(Uw, faceI)
+	tmp<scalarField> tkw(new scalarField(nutw.size()));
+	scalarField& kw = tkw();
+    
+    forAll(nutw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-        kw[faceI] = min(1.0,kPlus/90.0)*(nuw.boundaryField()[patchI][faceI]+nutw.boundaryField()[patchI][faceI])*magGradUw[faceI]/Cmu12;
+		scalar utauw = sqrt((nuw[faceI]+nutw[faceI])*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/nuw[faceI];
+		
+		kw[faceI] = min(1.0,kPlus/90.0)*pow(utauw,2.0)/0.3;
+		
+		//if(patch().name() == "FOIL_LEAD"){
+			//Pout<< faceI << " kw: "<<  kw[faceI] << " kPlus: "<<  kPlus << " nu + nut: "<< nuw[faceI]+nutw.boundaryField()[patchI][faceI] << "magVort: "<< mag(vort[faceCellI]) <<endl;
+			//Pout<< "Vorticity W1: " << vort[faceCellI] << "  Vorticity W2: " << vortPI[faceI] <<endl;
+		//}
     }
 	
-	//operator == (kw);
+	operator==(kw);
 
     fixedValueFvPatchScalarField::updateCoeffs();
 }
@@ -231,6 +238,14 @@ tmp<scalarField> kLowReRoughWallTPFvPatchScalarField::yPlus() const
     const scalarField& nuw = rasModel.nu().boundaryField()[patchI];
 
     return pow(Cmu_, 0.25)*y*sqrt(kwc)/nuw;
+}
+
+void kLowReRoughWallTPFvPatchScalarField::evaluate
+(
+    const Pstream::commsTypes commsType
+)
+{
+    fixedValueFvPatchScalarField::evaluate(commsType);
 }
 
 

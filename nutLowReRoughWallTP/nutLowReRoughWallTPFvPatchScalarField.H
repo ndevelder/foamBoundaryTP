@@ -22,22 +22,21 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::incompressible::RASModels::nutLowReRoughWallTPFvPatchScalarField
+    Foam::incompressible::RASModels::
+    nutLowReRoughWallTPFvPatchScalarField
 
 Description
-    Boundary condition for turbulent (kinematic) viscosity when using wall
-    functions, based on turbulence kinetic energy.
-    - replicates OpenFOAM v1.5 (and earlier) behaviour
+    Wall function boundary condition for rough walls
 
 SourceFiles
-    nutLowReRoughWallTPFvPatchScalarField.C
+    nutSpalartAllmarasStandardWallFunctionFvPatchScalarField.C
 
 \*---------------------------------------------------------------------------*/
 
 #ifndef nutLowReRoughWallTPFvPatchScalarField_H
 #define nutLowReRoughWallTPFvPatchScalarField_H
 
-#include "fixedValueFvPatchFields.H"
+#include "nutWallFunctionFvPatchScalarField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,44 +48,34 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-             Class nutLowReRoughWallTPFvPatchScalarField Declaration
+Class nutLowReRoughWallTPFvPatchScalarField Declaration
 \*---------------------------------------------------------------------------*/
 
 class nutLowReRoughWallTPFvPatchScalarField
 :
-    public fixedValueFvPatchScalarField
+    public nutWallFunctionFvPatchScalarField
 {
-protected:
+    // Private data
 
-    // Protected data
+        // Roughness model parameters
 
-        //- Cmu coefficient
-        scalar Cmu_;
+            //- Height
+            scalar roughnessHeight_;
 
-        //- Von Karman constant
-        scalar kappa_;
+            //- Constant
+            scalar roughnessConstant_;
 
-        //- E coefficient
-        scalar E_;
-		
-		//- Ks roughness sandgrain height
-		scalar ks_;
-
-        //- Y+ at the edge of the laminar sublayer
-        scalar yPlusLam_;
+            //- Scale factor
+            scalar roughnessFudgeFactor_;
+			
+			//- Choose nut wall condition
+			word nutExp_;
 
 
     // Protected member functions
 
-        //- Check the type of the patch
-        virtual void checkType();
-
-        //- Calculate the Y+ at the edge of the laminar sublayer
-        virtual scalar calcYPlusLam(const scalar kappa, const scalar E) const;
-
-
-        //- Write local wall function variables
-        virtual void writeLocalEntries(Ostream&) const;
+        //- Calculate the turbulence viscosity
+        virtual tmp<scalarField> calcNut() const;
 
 
 public:
@@ -134,7 +123,10 @@ public:
         {
             return tmp<fvPatchScalarField>
             (
-                new nutLowReRoughWallTPFvPatchScalarField(*this)
+                new nutLowReRoughWallTPFvPatchScalarField
+                (
+                    *this
+                )
             );
         }
 
@@ -153,26 +145,71 @@ public:
         {
             return tmp<fvPatchScalarField>
             (
-                new nutLowReRoughWallTPFvPatchScalarField(*this, iF)
+                new nutLowReRoughWallTPFvPatchScalarField
+                (
+                    *this,
+                    iF
+                )
             );
         }
 
 
     // Member functions
 
+        // Access
+
+            //- Return the roughness height
+            const scalar& roughnessHeight() const
+            {
+                return roughnessHeight_;
+            }
+
+            //- Return reference to the roughness height to allow adjustment
+            scalar& roughnessHeight()
+            {
+                return roughnessHeight_;
+            }
+
+
+            //- Return the roughness constant scale
+            const scalar& roughnessConstant() const
+            {
+                return roughnessConstant_;
+            }
+
+            //- Return reference to the roughness constant to allow adjustment
+            scalar& roughnessConstant()
+            {
+                return roughnessConstant_;
+            }
+
+            //- Return the roughness scale factor
+            const scalar& roughnessFudgeFactor() const
+            {
+                return roughnessFudgeFactor_;
+            }
+
+            //- Return reference to the roughness scale factor to allow
+            //  adjustment
+            scalar& roughnessFudgeFactor()
+            {
+                return roughnessFudgeFactor_;
+            }
+
+			//- Return reference to the roughness scale factor to allow
+            word& nutExp()
+            {
+                return nutExp_;
+            }
+
+    // I-O
+
         // Evaluation functions
-
-            //- Calculate and return the yPlus at the boundary
-            virtual tmp<scalarField> yPlus() const;
-
-            //- Update the coefficients associated with the patch field
-            virtual void updateCoeffs();
-
 
         // I-O
 
             //- Write
-            virtual void write(Ostream&) const;
+            virtual void write(Ostream& os) const;
 };
 
 

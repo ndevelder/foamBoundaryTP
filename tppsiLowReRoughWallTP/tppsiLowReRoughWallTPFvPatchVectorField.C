@@ -25,7 +25,6 @@ License
 
 #include "tppsiLowReRoughWallTPFvPatchVectorField.H"
 #include "RASModel.H"
-#include "turbulentPotential.H"
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
 #include "addToRunTimeSelectionTable.H"
@@ -182,31 +181,72 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 
 	// Get patch indices
     const label patchI = patch().index();
+	
+	const fvMesh& mesh = patch().boundaryMesh().mesh();
+	
     
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& nuw = db().lookupObject<volScalarField>("nu");
-	const volScalarField& nutw = db().lookupObject<volScalarField>("nut");
-	const volScalarField& kr = db().lookupObject<volScalarField>("k");
-	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+    const volScalarField& kr = mesh.lookupObject<volScalarField>("k");;
+	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
+	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI]);
 	
-	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
-	const scalarField magGradUw = mag(Uw.snGrad());
+	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
+	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
-    vectorField& tppsiw = *this;
+	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
+	const vectorField GradUw = Uw.snGrad();
+	const scalarField magGradUw = mag(GradUw);
+	
+	tmp<vectorField> tpsw(new vectorField(Uw.size()));
+	vectorField& psw = tpsw();
 
-    forAll(Uw, faceI)
+    forAll(nutw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-        tppsiw[faceI] = nutw.boundaryField()[patchI][faceI]*vort.boundaryField()[patchI][faceI]/kr.boundaryField()[patchI][faceI];
+	    //scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
+        //scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
+		
+		//if(patch().name() == "FOIL_LEAD"){
+		//	Pout<< "kr[faceCellI]: "<< kr[faceCellI] << " kr.boundaryField()[patchI][faceI]: "<< kr.boundaryField()[patchI][faceI] <<endl;
+		//}
+		
+		vector unitVort = vort.boundaryField()[patchI][faceI]/magVort[faceI];
+		
+		vector maxTppsi = 0.35*unitVort;
+
+                //if(patch().name() == "FOIL_TOP"){
+                //   Pout << "Psi^Vort: " << maxTppsi*kr.boundaryField()[patchI][faceI]  << endl;
+                // }
+
+		
+		// Constant 0.35 comes from channel tests...could be replaced with f(kPlus)
+		//psw[faceI] = 0.35*unitVort;
+		
+		//psw[faceI] = nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);  
+		
+		psw[faceI] = nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+
+                //if(patch().name() == "FOIL_TOP"){
+                //   Pout << "Psw: " << psw[faceI]  << endl;
+                //}
+
+		//if(patch().name() == "FOIL_TOP"){
+		//   Pout << "grad Uw: " << GradUw[faceI] << "  Vorticity: " << vort.boundaryField()[patchI][faceI]  << endl;
+		//}
     }
+
+    //Info<< kr.boundaryField()[patchI] << endl;
+	
+	//if(patch().name() == "FOIL_TOP"){
+	//	Pout << "min nut W: " << min(nutw) << endl;
+	//}  
+
+	vectorField::operator=(psw);
 	
     fixedValueFvPatchVectorField::updateCoeffs();
 }
@@ -223,14 +263,20 @@ tmp<scalarField> tppsiLowReRoughWallTPFvPatchVectorField::yPlus() const
     const volScalarField& k = tk();
     const scalarField kwc = k.boundaryField()[patchI].patchInternalField();
     const scalarField& nuw = rasModel.nu().boundaryField()[patchI];
-
     return pow(Cmu_, 0.25)*y*sqrt(kwc)/nuw;
 }
 
+void tppsiLowReRoughWallTPFvPatchVectorField::evaluate
+(
+    const Pstream::commsTypes commsType
+)
+{
+    fixedValueFvPatchVectorField::evaluate(commsType);
+}
 
 void tppsiLowReRoughWallTPFvPatchVectorField::write(Ostream& os) const
 {
-    fvPatchField<vector>::write(os);
+    fvPatchVectorField::write(os);
     writeLocalEntries(os);
     writeEntry("value", os);
 }

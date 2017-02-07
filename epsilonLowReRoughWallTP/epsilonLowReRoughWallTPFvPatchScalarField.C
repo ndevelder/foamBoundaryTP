@@ -25,7 +25,6 @@ License
 
 #include "epsilonLowReRoughWallTPFvPatchScalarField.H"
 #include "RASModel.H"
-#include "turbulentPotential.H"
 #include "fvPatchFieldMapper.H"
 #include "volFields.H"
 #include "addToRunTimeSelectionTable.H"
@@ -39,11 +38,11 @@ namespace incompressible
 namespace RASModels
 {
 
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void epsilonLowReRoughWallTPFvPatchScalarField::checkType()
 {
-    if (!patch().isWall())
+    if (!this->patch().isWall())
     {
         FatalErrorIn("epsilonLowReRoughWallTPFvPatchScalarField::checkType()")
             << "Invalid wall function specification" << nl
@@ -55,33 +54,6 @@ void epsilonLowReRoughWallTPFvPatchScalarField::checkType()
 }
 
 
-scalar epsilonLowReRoughWallTPFvPatchScalarField::calcYPlusLam
-(
-    const scalar kappa,
-    const scalar E
-) const
-{
-    scalar ypl = 11.0;
-
-    for (int i = 0; i < 10; i++)
-    {
-        ypl = log(E*ypl)/kappa;
-    }
-
-    return ypl;
-}
-
-
-
-void epsilonLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
-{
-    os.writeKeyword("Cmu") << Cmu_ << token::END_STATEMENT << nl;
-    os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
-    os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
-	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
-}
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
@@ -90,12 +62,16 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     const DimensionedField<scalar, volMesh>& iF
 )
 :
-    fixedValueFvPatchScalarField(p, iF),
+    fixedInternalValueFvPatchScalarField(p, iF),
+    UName_("U"),
+    kName_("k"),
+    GName_("RASModel::G"),
+    nuName_("nu"),
+    nutName_("nut"),
     Cmu_(0.09),
     kappa_(0.41),
     E_(9.8),
-	ks_(0.0),
-    yPlusLam_(calcYPlusLam(kappa_, E_))
+	ks_(0.0)
 {
     checkType();
 }
@@ -109,12 +85,16 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     const fvPatchFieldMapper& mapper
 )
 :
-    fixedValueFvPatchScalarField(ptf, p, iF, mapper),
+    fixedInternalValueFvPatchScalarField(ptf, p, iF, mapper),
+    UName_(ptf.UName_),
+    kName_(ptf.kName_),
+    GName_(ptf.GName_),
+    nuName_(ptf.nuName_),
+    nutName_(ptf.nutName_),
     Cmu_(ptf.Cmu_),
     kappa_(ptf.kappa_),
     E_(ptf.E_),
-	ks_(ptf.ks_),
-    yPlusLam_(ptf.yPlusLam_)
+	ks_(ptf.ks_)
 {
     checkType();
 }
@@ -127,12 +107,16 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     const dictionary& dict
 )
 :
-    fixedValueFvPatchScalarField(p, iF, dict),
+    fixedInternalValueFvPatchScalarField(p, iF, dict),
+    UName_(dict.lookupOrDefault<word>("U", "U")),
+    kName_(dict.lookupOrDefault<word>("k", "k")),
+    GName_(dict.lookupOrDefault<word>("G", "RASModel::G")),
+    nuName_(dict.lookupOrDefault<word>("nu", "nu")),
+    nutName_(dict.lookupOrDefault<word>("nut", "nut")),
     Cmu_(dict.lookupOrDefault<scalar>("Cmu", 0.09)),
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
-	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
-    yPlusLam_(calcYPlusLam(kappa_, E_))
+	ks_(dict.lookupOrDefault<scalar>("ks", 0.0))
 {
     checkType();
 }
@@ -140,15 +124,19 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 
 epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
 (
-    const epsilonLowReRoughWallTPFvPatchScalarField& wfpsf
+    const epsilonLowReRoughWallTPFvPatchScalarField& ewfpsf
 )
 :
-    fixedValueFvPatchScalarField(wfpsf),
-    Cmu_(wfpsf.Cmu_),
-    kappa_(wfpsf.kappa_),
-    E_(wfpsf.E_),
-	ks_(wfpsf.ks_),
-    yPlusLam_(wfpsf.yPlusLam_)
+    fixedInternalValueFvPatchScalarField(ewfpsf),
+    UName_(ewfpsf.UName_),
+    kName_(ewfpsf.kName_),
+    GName_(ewfpsf.GName_),
+    nuName_(ewfpsf.nuName_),
+    nutName_(ewfpsf.nutName_),
+    Cmu_(ewfpsf.Cmu_),
+    kappa_(ewfpsf.kappa_),
+    E_(ewfpsf.E_),
+	ks_(ewfpsf.ks_)
 {
     checkType();
 }
@@ -156,16 +144,20 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
 
 epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarField
 (
-    const epsilonLowReRoughWallTPFvPatchScalarField& wfpsf,
+    const epsilonLowReRoughWallTPFvPatchScalarField& ewfpsf,
     const DimensionedField<scalar, volMesh>& iF
 )
 :
-    fixedValueFvPatchScalarField(wfpsf, iF),
-    Cmu_(wfpsf.Cmu_),
-    kappa_(wfpsf.kappa_),
-    E_(wfpsf.E_),
-	ks_(wfpsf.ks_),
-    yPlusLam_(wfpsf.yPlusLam_)
+    fixedInternalValueFvPatchScalarField(ewfpsf, iF),
+    UName_(ewfpsf.UName_),
+    kName_(ewfpsf.kName_),
+    GName_(ewfpsf.GName_),
+    nuName_(ewfpsf.nuName_),
+    nutName_(ewfpsf.nutName_),
+    Cmu_(ewfpsf.Cmu_),
+    kappa_(ewfpsf.kappa_),
+    E_(ewfpsf.E_),
+	ks_(ewfpsf.ks_)
 {
     checkType();
 }
@@ -182,33 +174,34 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
 	// Get patch indices
     const label patchI = patch().index();
+	const fvMesh& mesh = patch().boundaryMesh().mesh();
     
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& nuw = db().lookupObject<volScalarField>("nu");
-	const volScalarField& nutw = db().lookupObject<volScalarField>("nut");
-	const volScalarField& kr = db().lookupObject<volScalarField>("k");
-	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
+	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI]);
+	
+	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
+	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
     
-    const scalar Cmu25 = pow(Cmu_, 0.25);
+   	const scalar Cmu25 = pow(Cmu_, 0.25);
 	scalar epsC = 0.257;
-	
-	tmp<scalarField> tepsw(new scalarField(patch().size(), 0.0));
-    scalarField& epsw = *this;
 
-    forAll(Uw, faceI)
+    scalarField& epsw = refValue();
+
+    forAll(nutw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
+	scalar utauw = sqrt((nuw[faceI] + nutw[faceI])*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/nuw[faceI];
 		
 		// Use epsilon constant region formula
 		if(kPlus<=5.0){
@@ -221,42 +214,44 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			epsC = 0.06;
 		}
 		
-        epsw[faceI] = epsC*pow((nuw.boundaryField()[patchI][faceI]+0.833*nutw.boundaryField()[patchI][faceI])*magGradUw[faceI],2.0)/nuw.boundaryField()[patchI][faceI];
+        epsw[faceI] = epsC*pow(utauw,4.0)/nuw[faceI];
     }
-	
-	//operator == (kw);
 
-    fixedValueFvPatchScalarField::updateCoeffs();
+    fixedInternalValueFvPatchScalarField::updateCoeffs();
 }
 
 
-tmp<scalarField> epsilonLowReRoughWallTPFvPatchScalarField::yPlus() const
+void epsilonLowReRoughWallTPFvPatchScalarField::evaluate
+(
+    const Pstream::commsTypes commsType
+)
 {
-    const label patchI = patch().index();
-
-    const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");
-    const scalarField& y = rasModel.y()[patchI];
-
-    const tmp<volScalarField> tk = rasModel.k();
-    const volScalarField& k = tk();
-    const scalarField kwc = k.boundaryField()[patchI].patchInternalField();
-    const scalarField& nuw = rasModel.nu().boundaryField()[patchI];
-
-    return pow(Cmu_, 0.25)*y*sqrt(kwc)/nuw;
+    fixedInternalValueFvPatchScalarField::evaluate(commsType);
 }
 
 
 void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
 {
-    fvPatchField<scalar>::write(os);
-    writeLocalEntries(os);
-    writeEntry("value", os);
+    fixedInternalValueFvPatchScalarField::write(os);
+    writeEntryIfDifferent<word>(os, "U", "U", UName_);
+    writeEntryIfDifferent<word>(os, "k", "k", kName_);
+    writeEntryIfDifferent<word>(os, "G", "RASModel::G", GName_);
+    writeEntryIfDifferent<word>(os, "nu", "nu", nuName_);
+    writeEntryIfDifferent<word>(os, "nut", "nut", nutName_);
+    os.writeKeyword("Cmu") << Cmu_ << token::END_STATEMENT << nl;
+    os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
+    os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
+	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
 }
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeField(fvPatchScalarField, epsilonLowReRoughWallTPFvPatchScalarField);
+makePatchTypeField
+(
+    fvPatchScalarField,
+    epsilonLowReRoughWallTPFvPatchScalarField
+);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -25,9 +25,9 @@ Class
     Foam::incompressible::RASModels::epsilonLowReRoughWallTPFvPatchScalarField
 
 Description
-    Boundary condition for turbulent (kinematic) viscosity when using wall
-    functions, based on turbulence kinetic energy.
-    - replicates OpenFOAM v1.5 (and earlier) behaviour
+    Boundary condition for epsilon when using wall functions
+    - calculates epsilon and G
+    - epsilon values added directly into the matrix to act as a constraint
 
 SourceFiles
     epsilonLowReRoughWallTPFvPatchScalarField.C
@@ -37,7 +37,7 @@ SourceFiles
 #ifndef epsilonLowReRoughWallTPFvPatchScalarField_H
 #define epsilonLowReRoughWallTPFvPatchScalarField_H
 
-#include "fixedValueFvPatchFields.H"
+#include "fixedInternalValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,16 +49,29 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-             Class epsilonLowReRoughWallTPFvPatchScalarField Declaration
+           Class epsilonLowReRoughWallTPFvPatchScalarField Declaration
 \*---------------------------------------------------------------------------*/
 
 class epsilonLowReRoughWallTPFvPatchScalarField
 :
-    public fixedValueFvPatchScalarField
+    public fixedInternalValueFvPatchScalarField
 {
-protected:
+    // Private data
 
-    // Protected data
+        //- Name of velocity field
+        word UName_;
+
+        //- Name of turbulence kinetic energy field
+        word kName_;
+
+        //- Name of turbulence generation field
+        word GName_;
+
+        //- Name of laminar viscosity field
+        word nuName_;
+
+        //- Name of turbulent viscosity field
+        word nutName_;
 
         //- Cmu coefficient
         scalar Cmu_;
@@ -69,24 +82,13 @@ protected:
         //- E coefficient
         scalar E_;
 		
-		//- Ks roughness sandgrain height
 		scalar ks_;
 
-        //- Y+ at the edge of the laminar sublayer
-        scalar yPlusLam_;
 
-
-    // Protected member functions
+    // Private member functions
 
         //- Check the type of the patch
-        virtual void checkType();
-
-        //- Calculate the Y+ at the edge of the laminar sublayer
-        virtual scalar calcYPlusLam(const scalar kappa, const scalar E) const;
-
-
-        //- Write local wall function variables
-        virtual void writeLocalEntries(Ostream&) const;
+        void checkType();
 
 
 public:
@@ -162,17 +164,20 @@ public:
 
         // Evaluation functions
 
-            //- Calculate and return the yPlus at the boundary
-            virtual tmp<scalarField> yPlus() const;
-
             //- Update the coefficients associated with the patch field
             virtual void updateCoeffs();
+
+            //- Evaluate the patchField
+            virtual void evaluate
+            (
+                const Pstream::commsTypes  = Pstream::blocking
+            );
 
 
         // I-O
 
             //- Write
-            virtual void write(Ostream&) const;
+            void write(Ostream&) const;
 };
 
 
