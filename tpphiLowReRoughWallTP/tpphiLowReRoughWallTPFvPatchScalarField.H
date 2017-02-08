@@ -72,8 +72,14 @@ protected:
 		//- Ks roughness sandgrain height
 		scalar ks_;
 
+		//- Phi/K ratio for rough surfaces
+		scalar pkC_;
+		
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;
+		
+		//- Choose tpphi wall condition
+		word rType_;
 
 
     // Protected member functions
@@ -173,7 +179,18 @@ public:
             (
                 const Pstream::commsTypes commsType = Pstream::blocking
             );
+			
+			//- Return reference to tpphi rough type calc
+            word& rType()
+            {
+                return rType_;
+            }
 
+			//- Return reference to rough phi/k ratio
+            scalar& pkC()
+            {
+                return pkC_;
+            }
 
 
         // I-O

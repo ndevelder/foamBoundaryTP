@@ -78,6 +78,8 @@ void tpphiLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) con
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("pkC") << pkC_ << token::END_STATEMENT << nl;
+	os.writeKeyword("rType") << rType_ << token::END_STATEMENT << nl;
 }
 
 
@@ -94,7 +96,9 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
-    yPlusLam_(calcYPlusLam(kappa_, E_))
+	pkC_(0.1455),
+    yPlusLam_(calcYPlusLam(kappa_, E_)),
+	rType_("calculated")
 {
     checkType();
 }
@@ -113,7 +117,9 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
-    yPlusLam_(ptf.yPlusLam_)
+	pkC_(ptf.pkC_),
+    yPlusLam_(ptf.yPlusLam_),
+	rType_(ptf.rType_)
 {
     checkType();
 }
@@ -130,8 +136,10 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     Cmu_(dict.lookupOrDefault<scalar>("Cmu", 0.09)),
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
-	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
-    yPlusLam_(calcYPlusLam(kappa_, E_))
+	ks_(dict.lookupOrDefault<scalar>("ks", 1e-10)),
+	pkC_(dict.lookupOrDefault<scalar>("pkC", 0.1455)),
+    yPlusLam_(calcYPlusLam(kappa_, E_)),
+	rType_(dict.lookupOrDefault<word>("rType","calculated"))
 {
     checkType();
 }
@@ -147,7 +155,9 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
-    yPlusLam_(wfpsf.yPlusLam_)
+	pkC_(wfpsf.pkC_),
+    yPlusLam_(wfpsf.yPlusLam_),
+	rType_(wfpsf.rType_)
 {
     checkType();
 }
@@ -164,7 +174,9 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
-    yPlusLam_(wfpsf.yPlusLam_)
+	pkC_(wfpsf.pkC_),
+    yPlusLam_(wfpsf.yPlusLam_),
+	rType_(wfpsf.rType_)
 {
     checkType();
 }
@@ -210,9 +222,15 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
         kPlus[faceI] = ks_*utauw/nuw[faceI];
 		
-		phw[faceI] = pow((1.0/5.5)*log(kPlus[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
-		
-		//phw[faceI] = 0.12;
+		if(rType_ == "channel") {
+			phw[faceI] = pow((1.0/5.5)*log(ks_/nuw[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
+		}else if(rType_ == "calculated"){
+			phw[faceI] = pow((1.0/5.5)*log(kPlus[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
+		}else if(rType_ == "fixed"){ 
+			phw[faceI] = pkC_;
+		}else{
+			phw[faceI] = 0.1455;
+		}
     }
 	
 	//if(patch().name() == "FOIL_TOP"){
