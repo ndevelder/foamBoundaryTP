@@ -95,7 +95,7 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     Cmu_(0.09),
     kappa_(0.41),
     E_(9.8),
-	ks_(0.0),
+	ks_(1e-10),
 	pkC_(0.1455),
     yPlusLam_(calcYPlusLam(kappa_, E_)),
 	rType_("calculated")
@@ -210,10 +210,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
     
-    tmp<scalarField> tphw(new scalarField(nuw.size()));
+    tmp<scalarField> tphw(new scalarField(nutw.size()));
 	scalarField& phw = tphw();
 	
-	tmp<scalarField> tkplus(new scalarField(nuw.size()));
+	tmp<scalarField> tkplus(new scalarField(nutw.size()));
 	scalarField& kPlus = tkplus();
 
     forAll(nutw, faceI)
@@ -224,20 +224,24 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		if(rType_ == "channel") {
 			phw[faceI] = pow((1.0/5.5)*log(ks_/nuw[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
+			//Pout << "phi W: " << pow((1.0/5.5)*log(ks_/nuw[faceI]) - (3.0*kappa_/5.5),2.0) << endl;
+			//Pout << "k W: " << kr.boundaryField()[patchI][faceI] << endl;
 		}else if(rType_ == "calculated"){
 			phw[faceI] = pow((1.0/5.5)*log(kPlus[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
 		}else if(rType_ == "fixed"){ 
 			phw[faceI] = pkC_;
-		}else{
+		}else if(rType_ == "smooth"){ 
+			phw[faceI] = SMALL;
+		}else{ 
 			phw[faceI] = 0.1455;
 		}
-    }
+    
+		//if(patch().name() == "WALL_TOP"){
+		//	Pout << "tpphi/k W: " << phw[faceI] << endl;
+		//}
+	}
 	
-	//if(patch().name() == "FOIL_TOP"){
-	//	Pout << "tpphi/k W: " << tpphiNew << endl;
-	//}
-	
-	operator==(phw);
+	operator==(tphw);
  
     fixedValueFvPatchScalarField::updateCoeffs();
 }

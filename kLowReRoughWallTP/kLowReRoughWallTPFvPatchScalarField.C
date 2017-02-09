@@ -209,9 +209,13 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     {
         label faceCellI = patch().faceCells()[faceI];		
 		scalar utauw = sqrt((nuw[faceI]+nutw[faceI])*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw[faceI];
+        scalar kPlus = ks_*utauw/(nuw[faceI]+nutw[faceI]);
 		
-		kw[faceI] = min(1.0,kPlus/90.0)*pow(utauw,2.0)/0.3;
+		if(kPlus > 5.0){
+			kw[faceI] = min(1.0,kPlus/100.0)*pow(utauw,2.0)/0.3;
+		}else{
+			kw[faceI] = SMALL;
+		}
 		
 		//if(patch().name() == "FOIL_LEAD"){
 			//Pout<< faceI << " kw: "<<  kw[faceI] << " kPlus: "<<  kPlus << " nu + nut: "<< nuw[faceI]+nutw.boundaryField()[patchI][faceI] << "magVort: "<< mag(vort[faceCellI]) <<endl;

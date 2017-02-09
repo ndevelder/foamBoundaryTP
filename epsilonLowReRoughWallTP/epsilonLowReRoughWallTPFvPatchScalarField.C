@@ -201,7 +201,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     {
         label faceCellI = patch().faceCells()[faceI];		
 	scalar utauw = sqrt((nuw[faceI] + nutw[faceI])*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuw[faceI];
+        scalar kPlus = ks_*utauw/(nuw[faceI] + nutw[faceI]);
 		
 		// Use epsilon constant region formula
 		if(kPlus<=5.0){
@@ -214,7 +214,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			epsC = 0.06;
 		}
 		
-        epsw[faceI] = epsC*pow(utauw,4.0)/nuw[faceI];
+        epsw[faceI] = epsC*pow(utauw,4.0)/(nuw[faceI] + nutw[faceI]);
     }
 
     fixedInternalValueFvPatchScalarField::updateCoeffs();
