@@ -187,6 +187,10 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
+	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
+	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
+	const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
+	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
@@ -208,11 +212,11 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     forAll(nutw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt((nuw[faceI]+nutw[faceI])*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/(nuw[faceI]+nutw[faceI]);
+		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/(nuw[faceI]);
 		
-		if(kPlus > 5.0){
-			kw[faceI] = min(1.0,kPlus/100.0)*pow(utauw,2.0)/0.3;
+		if(kPlus > 4.999){
+			kw[faceI] = min(1.0,kPlus/100.0)*(nuw[faceI]+sigmaKr*nutw[faceI])*magGradUw[faceI]/0.3;
 		}else{
 			kw[faceI] = SMALL;
 		}

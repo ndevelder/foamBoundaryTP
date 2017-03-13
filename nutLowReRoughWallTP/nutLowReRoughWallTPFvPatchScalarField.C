@@ -50,6 +50,10 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
+		
+	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
+	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
+	word tslimiter(tpCoeffDict.lookup("tslimiter"));
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
@@ -62,14 +66,26 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
     
 	tmp<scalarField> tnutw(new scalarField(patch().size(), 0.0));
 	scalarField& nutw = tnutw();
+	
+	scalar T = 0.0;
 
     forAll(kr.boundaryField()[patchI], faceI)
     {
 		label faceCellI = patch().faceCells()[faceI];
 		if(nutExp_ == "default"){
-           nutw[faceI] = 0.21*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
-		nutw[faceI] = min(nutw[faceI],1.0e5*nuw[faceI]);
-                }
+			
+		   if(tslimiter == "true"){
+			T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL), 6.0*sqrt(nuw[faceI]/(epsr[faceCellI]+SMALL)));
+		   }
+		   
+		   if(tslimiter == "false"){
+			T = kr[faceCellI]/epsr[faceCellI];
+		   }           
+		   
+		   nutw[faceI] = 0.21*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+		   nutw[faceI] = min(nutw[faceI],1.0e5*nuw[faceI]);
+		}
+		
 		if(nutExp_ == "ksquared"){
            nutw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
 		}		

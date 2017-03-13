@@ -71,7 +71,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     Cmu_(0.09),
     kappa_(0.41),
     E_(9.8),
-	ks_(0.0)
+	ks_(0.0),
+	sr_(0.235),
+	epsType_("rough")
 {
     checkType();
 }
@@ -94,7 +96,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     Cmu_(ptf.Cmu_),
     kappa_(ptf.kappa_),
     E_(ptf.E_),
-	ks_(ptf.ks_)
+	ks_(ptf.ks_),
+	sr_(ptf.sr_),
+	epsType_(ptf.epsType_)
 {
     checkType();
 }
@@ -116,7 +120,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     Cmu_(dict.lookupOrDefault<scalar>("Cmu", 0.09)),
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
-	ks_(dict.lookupOrDefault<scalar>("ks", 0.0))
+	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
+	sr_(dict.lookupOrDefault<scalar>("sr", 0.235)),
+	epsType_(dict.lookupOrDefault<word>("epsType", "rough"))
 {
     checkType();
 }
@@ -136,7 +142,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     Cmu_(ewfpsf.Cmu_),
     kappa_(ewfpsf.kappa_),
     E_(ewfpsf.E_),
-	ks_(ewfpsf.ks_)
+	ks_(ewfpsf.ks_),
+	sr_(ewfpsf.sr_),
+	epsType_(ewfpsf.epsType_)
 {
     checkType();
 }
@@ -157,7 +165,9 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     Cmu_(ewfpsf.Cmu_),
     kappa_(ewfpsf.kappa_),
     E_(ewfpsf.E_),
-	ks_(ewfpsf.ks_)
+	ks_(ewfpsf.ks_),
+	sr_(ewfpsf.sr_),
+	epsType_(ewfpsf.epsType_)
 {
     checkType();
 }
@@ -181,6 +191,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const scalarField& y = rasModel.y()[patchI];
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	const volScalarField& kSqrtr = mesh.lookupObject<volScalarField>("kSqrt");
+	const scalarField gradkSqrt = kSqrtr.boundaryField()[patchI].snGrad();
+	const volScalarField& prodr = mesh.lookupObject<volScalarField>("tpProd");
+	
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
 	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
@@ -196,26 +210,69 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	scalar epsC = 0.257;
 
     scalarField& epsw = refValue();
+	
+	
+	if(epsType_ == "rough"){
 
-    forAll(nutw, faceI)
-    {
-        label faceCellI = patch().faceCells()[faceI];		
-	scalar utauw = sqrt((nuw[faceI] + nutw[faceI])*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/(nuw[faceI] + nutw[faceI]);
+		const scalar cB = 0.05;
+		const scalar sM = 0.0025;
+		const scalar cUp = 0.5;
+
+    // Started with cUp = 0.26  
 		
-		// Use epsilon constant region formula
-		if(kPlus<=5.0){
-			epsC = 0.257;
-		}else if(kPlus>5.0 && kPlus<=50.0){
-			epsC = 0.0625 + 0.268*pow(1.0-(kPlus/50.0),3.0);
-		}else if(kPlus>50.0 && kPlus<=100.0){
-			epsC = 0.0625 - (0.0025/50.0)*(kPlus-50.0);
-		}else{
-			epsC = 0.06;
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);
+			
+			// Use epsilon constant region formula
+			if(kPlus<=5.0){
+				epsC = cUp;
+			}else if(kPlus>5.0 && kPlus<=50.0){
+				epsC = (cB+sM) + ((cUp-(cB+sM))/(0.73))*pow((1.0-kPlus/50.0),3.0);
+			}else if(kPlus>50.0 && kPlus<=100.0){
+				epsC = (cB+sM) - (sM/50.0)*(kPlus-50.0);
+			}else{
+				epsC = cB;
+			}
+			
+			epsw[faceI] = epsC*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+		}
+	}
+	
+	if(epsType_ == "smooth"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+		
+			epsw[faceI] = 2.0*nuw[faceI]*sqr(mag(gradkSqrt[faceI]));
 		}
 		
-        epsw[faceI] = epsC*pow(utauw,4.0)/(nuw[faceI] + nutw[faceI]);
-    }
+	}
+	
+	if(epsType_ == "srfixed"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+		
+			epsw[faceI] = sr_*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+		}
+		
+	}
+	
+	if(epsType_ == "pequal"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+		
+			epsw[faceI] = 1.12*prodr[faceCellI]*kr.boundaryField()[patchI][faceI];
+		}
+		
+	}
 
     fixedInternalValueFvPatchScalarField::updateCoeffs();
 }
@@ -242,6 +299,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("sr") << sr_ << token::END_STATEMENT << nl;
 }
 
 

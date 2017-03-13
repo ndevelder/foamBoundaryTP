@@ -71,6 +71,9 @@ protected:
 		
 		//- Ks roughness sandgrain height
 		scalar ks_;
+		
+		//- PsiW Roughness Constant
+		scalar cr_;
 
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;

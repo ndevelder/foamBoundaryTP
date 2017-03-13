@@ -94,6 +94,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
+	cr_(1.0),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -113,6 +114,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
+	cr_(ptf.cr_),
     yPlusLam_(ptf.yPlusLam_)
 {
     checkType();
@@ -131,6 +133,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
+	cr_(dict.lookupOrDefault<scalar>("cr", 1.0)),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -147,6 +150,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	cr_(wfpsf.cr_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -164,6 +168,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	cr_(wfpsf.cr_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -229,7 +234,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		
 		//psw[faceI] = nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);  
 		
-		psw[faceI] = nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+		psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
 
                 //if(patch().name() == "FOIL_TOP"){
                 //   Pout << "Psw: " << psw[faceI]  << endl;

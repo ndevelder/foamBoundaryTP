@@ -215,6 +215,8 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	tmp<scalarField> tkplus(new scalarField(nutw.size()));
 	scalarField& kPlus = tkplus();
+	
+	scalar pkF = SMALL;
 
     forAll(nutw, faceI)
     {
@@ -223,17 +225,36 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         kPlus[faceI] = ks_*utauw/nuw[faceI];
 		
 		if(rType_ == "channel") {
+			
 			phw[faceI] = pow((1.0/5.5)*log(ks_/nuw[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
 			//Pout << "phi W: " << pow((1.0/5.5)*log(ks_/nuw[faceI]) - (3.0*kappa_/5.5),2.0) << endl;
 			//Pout << "k W: " << kr.boundaryField()[patchI][faceI] << endl;
 		}else if(rType_ == "calculated"){
-			phw[faceI] = pow((1.0/5.5)*log(kPlus[faceI]) - (3.0*kappa_/5.5),2.0)/kr.boundaryField()[patchI][faceI];
+			
+			if(kPlus[faceI]<=5.0){
+			  pkF = 0.03;
+			}else if(kPlus[faceI]<30.0){
+			  pkF = 0.09 + (0.12/25)*kPlus[faceI];
+			}else if(kPlus[faceI]<100.0){
+			  pkF = 0.18 + (0.088/70.0)*kPlus[faceI];
+			}else{
+			  pkF = 0.19 + (0.09/70.0)*100.0;
+			}
+			
+			phw[faceI] = pkF;
+						
 		}else if(rType_ == "fixed"){ 
+		
 			phw[faceI] = pkC_;
+			
 		}else if(rType_ == "smooth"){ 
+		
 			phw[faceI] = SMALL;
+			
 		}else{ 
+		
 			phw[faceI] = 0.1455;
+			
 		}
     
 		//if(patch().name() == "WALL_TOP"){

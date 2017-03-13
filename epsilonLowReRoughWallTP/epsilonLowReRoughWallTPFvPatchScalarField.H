@@ -83,6 +83,10 @@ class epsilonLowReRoughWallTPFvPatchScalarField
         scalar E_;
 		
 		scalar ks_;
+		
+		scalar sr_;
+		
+		word epsType_;
 
 
     // Private member functions
