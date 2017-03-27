@@ -78,6 +78,8 @@ void tppsiLowReRoughWallTPFvPatchVectorField::writeLocalEntries(Ostream& os) con
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("cr") << cr_ << token::END_STATEMENT << nl;
+	os.writeKeyword("pswType") << pswType_ << token::END_STATEMENT << nl;
 }
 
 
@@ -95,6 +97,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(9.8),
 	ks_(0.0),
 	cr_(1.0),
+	pswType_("nut"),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -115,6 +118,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(ptf.E_),
 	ks_(ptf.ks_),
 	cr_(ptf.cr_),
+	pswType_(ptf.pswType_),
     yPlusLam_(ptf.yPlusLam_)
 {
     checkType();
@@ -134,6 +138,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
 	cr_(dict.lookupOrDefault<scalar>("cr", 1.0)),
+	pswType_(dict.lookupOrDefault<word>("pswType", "nut")),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -151,6 +156,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	cr_(wfpsf.cr_),
+	pswType_(wfpsf.pswType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -169,6 +175,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	cr_(wfpsf.cr_),
+	pswType_(wfpsf.pswType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -213,29 +220,21 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
     forAll(nutw, faceI)
     {
         label faceCellI = patch().faceCells()[faceI];		
-	    //scalar utauw = sqrt(nuw.boundaryField()[patchI][faceI]*magGradUw[faceI]);
-        //scalar kPlus = ks_*utauw/nuw.boundaryField()[patchI][faceI];
-		
-		//if(patch().name() == "FOIL_LEAD"){
-		//	Pout<< "kr[faceCellI]: "<< kr[faceCellI] << " kr.boundaryField()[patchI][faceI]: "<< kr.boundaryField()[patchI][faceI] <<endl;
-		//}
 		
 		vector unitVort = vort.boundaryField()[patchI][faceI]/magVort[faceI];
 		
 		vector maxTppsi = 0.35*unitVort;
 
-                //if(patch().name() == "FOIL_TOP"){
-                //   Pout << "Psi^Vort: " << maxTppsi*kr.boundaryField()[patchI][faceI]  << endl;
-                // }
 
-		
-		// Constant 0.35 comes from channel tests...could be replaced with f(kPlus)
-		//psw[faceI] = 0.35*unitVort;
-		
-		//psw[faceI] = nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);  
-		
-		psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
-
+		if(pswType_ == "phi"){		
+			psw[faceI] = cr_*nuw[faceI]*tpr.boundaryField()[patchI][faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+        }
+		else if(pswType_ == "nu"){		
+			psw[faceI] = 2.0*nuw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+        }
+		else{
+		    psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+		}
                 //if(patch().name() == "FOIL_TOP"){
                 //   Pout << "Psw: " << psw[faceI]  << endl;
                 //}

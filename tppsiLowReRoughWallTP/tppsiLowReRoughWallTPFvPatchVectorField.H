@@ -74,6 +74,8 @@ protected:
 		
 		//- PsiW Roughness Constant
 		scalar cr_;
+		
+		word pswType_;
 
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;

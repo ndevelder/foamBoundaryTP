@@ -190,14 +190,17 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& kSqrtr = mesh.lookupObject<volScalarField>("kSqrt");
+	const volScalarField& kr = db().lookupObject<volScalarField>("k");
+	const volScalarField& kSqrtr = db().lookupObject<volScalarField>("kSqrt");
 	const scalarField gradkSqrt = kSqrtr.boundaryField()[patchI].snGrad();
-	const volScalarField& prodr = mesh.lookupObject<volScalarField>("tpProd");
 	
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
+	const volScalarField& prodr = db().lookupObject<volScalarField>("tpProd");
 	
-	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
+	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+	volScalarField phir = tpr*kr;
+	scalarField gradphiSqrt = phir.boundaryField()[patchI].snGrad();
+	
+	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI]);
 	
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
@@ -241,13 +244,51 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}
 	}
 	
+	if(epsType_ == "roughtwo"){
+
+		const scalar cB = 0.05;
+		const scalar sM = 0.0025;
+		const scalar cUp = 0.26;
+
+    // Started with cUp = 0.26  
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);
+			
+			// Use epsilon constant region formula
+			if(kPlus<=5.0){
+				epsC = cUp;
+			}else if(kPlus>5.0 && kPlus<=90.0){
+				epsC = cUp + (kPlus/270.0);
+			}else{
+				epsC = 0.6;
+			}
+			
+			epsw[faceI] = epsC*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+		}
+	}
+	
 	if(epsType_ == "smooth"){
 		
 		forAll(nutw, faceI)
 		{
 			label faceCellI = patch().faceCells()[faceI];		
 		
-			epsw[faceI] = 2.0*nuw[faceI]*sqr(mag(gradkSqrt[faceI]));
+			epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+		}
+		
+	}
+	
+	if(epsType_ == "smoothphi"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+		
+			epsw[faceI] = 2.0*nuw[faceI]*sqr(mag(gradphiSqrt[faceI]));
 		}
 		
 	}
@@ -268,8 +309,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		forAll(nutw, faceI)
 		{
 			label faceCellI = patch().faceCells()[faceI];		
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);		
 		
-			epsw[faceI] = 1.12*prodr[faceCellI]*kr.boundaryField()[patchI][faceI];
+			epsw[faceI] = 2.0*nuw[faceI]*sqr(mag(gradkSqrt[faceI])) + 0.786*prodr[faceCellI]*kr[faceCellI];
 		}
 		
 	}
@@ -300,6 +343,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
 	os.writeKeyword("sr") << sr_ << token::END_STATEMENT << nl;
+	os.writeKeyword("epsType") << epsType_ << token::END_STATEMENT << nl;
 }
 
 

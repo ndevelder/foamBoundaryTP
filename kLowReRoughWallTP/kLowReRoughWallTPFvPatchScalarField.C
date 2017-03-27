@@ -211,12 +211,13 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     
     forAll(nutw, faceI)
     {
+		scalar nuEffw = nuw[faceI];
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/(nuw[faceI]);
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/(nuEffw);
 		
 		if(kPlus > 4.999){
-			kw[faceI] = min(1.0,kPlus/100.0)*(nuw[faceI]+sigmaKr*nutw[faceI])*magGradUw[faceI]/0.3;
+			kw[faceI] = min(1.0,kPlus/90.0)*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
 		}else{
 			kw[faceI] = SMALL;
 		}

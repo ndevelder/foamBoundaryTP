@@ -207,6 +207,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");	
 	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
+	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
     
@@ -220,9 +221,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
     forAll(nutw, faceI)
     {
+		scalar nuEffw = nuw[faceI];
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-        kPlus[faceI] = ks_*utauw/nuw[faceI];
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+        kPlus[faceI] = ks_*utauw/nuEffw;
 		
 		if(rType_ == "channel") {
 			
