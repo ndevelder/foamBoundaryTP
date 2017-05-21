@@ -78,6 +78,7 @@ void kLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("kType") << kType_ << token::END_STATEMENT << nl;
 }
 
 
@@ -94,6 +95,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
+	kType_("linear"),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -113,6 +115,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
+	kType_(ptf.kType_),
     yPlusLam_(ptf.yPlusLam_)
 {
     checkType();
@@ -131,6 +134,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
+	kType_(dict.lookupOrDefault<word>("kType", "linear")),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -147,6 +151,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	kType_(wfpsf.kType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -164,6 +169,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	kType_(wfpsf.kType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -211,15 +217,22 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     
     forAll(nutw, faceI)
     {
-		scalar nuEffw = nuw[faceI];
+		scalar nuEffw = nuw[faceI]+nutw[faceI];
         label faceCellI = patch().faceCells()[faceI];		
 		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/(nuEffw);
+        scalar kPlus = ks_*utauw/nuw[faceI];
 		
-		if(kPlus > 4.999){
+		if(kType_ == "quad"){
+			kw[faceI] = min(1.0,pow(kPlus/90.0,2.0))*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
+	    }
+		else if(kType_ == "linear"){
 			kw[faceI] = min(1.0,kPlus/90.0)*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
-		}else{
-			kw[faceI] = SMALL;
+		}
+		else if(kType_ == "sqrt"){
+			kw[faceI] = min(1.0,pow(kPlus/90.0,0.5))*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
+		}
+		else{
+			kw[faceI] = min(1.0,kPlus/90.0)*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
 		}
 		
 		//if(patch().name() == "FOIL_LEAD"){

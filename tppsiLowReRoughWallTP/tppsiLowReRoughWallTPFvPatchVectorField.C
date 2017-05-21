@@ -233,7 +233,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 			psw[faceI] = 2.0*nuw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
         }
 		else{
-		    psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+		    psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
 		}
                 //if(patch().name() == "FOIL_TOP"){
                 //   Pout << "Psw: " << psw[faceI]  << endl;

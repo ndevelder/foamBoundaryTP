@@ -54,6 +54,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
 	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
 	word tslimiter(tpCoeffDict.lookup("tslimiter"));
+	scalar nRMax = readScalar(tpCoeffDict.lookup("nutRatMax"));
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
@@ -83,7 +84,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		   }           
 		   
 		   nutw[faceI] = 0.21*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
-		   nutw[faceI] = min(nutw[faceI],1.0e5*nuw[faceI]);
+		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
 		
 		if(nutExp_ == "ksquared"){

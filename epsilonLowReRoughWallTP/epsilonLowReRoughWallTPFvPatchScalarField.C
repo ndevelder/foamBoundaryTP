@@ -121,7 +121,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
-	sr_(dict.lookupOrDefault<scalar>("sr", 0.235)),
+	sr_(dict.lookupOrDefault<scalar>("sr", 1.0)),
 	epsType_(dict.lookupOrDefault<word>("epsType", "rough"))
 {
     checkType();
@@ -191,13 +191,14 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const scalarField& y = rasModel.y()[patchI];
 	
 	const volScalarField& kr = db().lookupObject<volScalarField>("k");
-	const volScalarField& kSqrtr = db().lookupObject<volScalarField>("kSqrt");
-	const scalarField gradkSqrt = kSqrtr.boundaryField()[patchI].snGrad();
+	volScalarField kSqrtr = sqrt(kr);
+	scalarField gradkSqrt = kSqrtr.boundaryField()[patchI].snGrad();
 	
 	const volScalarField& prodr = db().lookupObject<volScalarField>("tpProd");
 	
 	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
 	volScalarField phir = tpr*kr;
+	volScalarField phirsqrt = sqrt(phir);
 	scalarField gradphiSqrt = phir.boundaryField()[patchI].snGrad();
 	
 	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
@@ -208,11 +209,16 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
+	
+	const fvPatchVectorField& tppsiw = lookupPatchField<volVectorField, vector>("tppsi");
+    const scalarField psiw = mag(tppsiw*kr.boundaryField()[patchI]);
     
    	const scalar Cmu25 = pow(Cmu_, 0.25);
 	scalar epsC = 0.257;
 
     scalarField& epsw = refValue();
+	
+	volScalarField& GdKw = const_cast<volScalarField&>(db().lookupObject<volScalarField>("tpProd"));
 	
 	
 	if(epsType_ == "rough"){
@@ -275,12 +281,66 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			label faceCellI = patch().faceCells()[faceI];		
+			label faceCellI = patch().faceCells()[faceI];
 		
 			epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 		}
 		
 	}
+	
+	if(epsType_ == "utau4"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEff = nuw[faceI]+nutw[faceI];
+			label faceCellI = patch().faceCells()[faceI];
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);			
+			
+			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+			
+			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
+			
+			scalar epsMult = min( 0.21*(1.0 + log(kPlus)/4.75) , 0.41);
+			
+			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/nuEff;
+			
+			if(kPlus<=5.0){
+				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			}else{
+				epsw[faceI] = epsCalc;
+			}
+		}
+		
+	}
+
+
+	if(epsType_ == "utau3"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEff = nuw[faceI]+nutw[faceI];
+			label faceCellI = patch().faceCells()[faceI];
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);			
+			
+			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+			
+			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
+			
+			scalar epsMult = 0.229*pow(5.0/kPlus,2.0) + psiw[faceI];
+			
+			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],1.5)/nuEff;
+			
+			if(kPlus<=5.0){
+				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			}else{
+				epsw[faceI] = epsCalc;
+			}
+		}
+		
+	}
+
 	
 	if(epsType_ == "smoothphi"){
 		

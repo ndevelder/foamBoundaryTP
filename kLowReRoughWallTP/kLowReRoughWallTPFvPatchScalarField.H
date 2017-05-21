@@ -71,6 +71,9 @@ protected:
 		
 		//- Ks roughness sandgrain height
 		scalar ks_;
+		
+		//- kType choice of interpolation on kPlus
+		word kType_;
 
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;
