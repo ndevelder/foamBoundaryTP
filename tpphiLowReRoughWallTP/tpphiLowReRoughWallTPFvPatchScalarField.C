@@ -243,6 +243,24 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			}
 			
 			phw[faceI] = pkF;
+			
+		}else if(rType_ == "calcratio"){
+			
+			if(kPlus[faceI]<5.0){
+			  pkF = 0.0;
+			}else if(kPlus[faceI]<45.0){
+			  pkF = 0.12*pow(kPlus[faceI]/45.0,1.5) - 0.0014*(1.0 - (kPlus[faceI]/45.0));
+			}else if(kPlus[faceI]<90.0){
+			  pkF = 0.01*(kPlus[faceI] - 45.0)/45.0 + 0.12;
+			}else{
+			  pkF = 0.13;
+			}
+			
+			if(pkF < 0.0){
+				Info << "Negative phiw" << endl;
+			}
+			
+			phw[faceI] = pkF;
 						
 		}else if(rType_ == "fixedratio"){ 
 		

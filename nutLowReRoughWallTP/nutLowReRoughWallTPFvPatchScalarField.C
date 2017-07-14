@@ -83,7 +83,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 			T = kr[faceCellI]/epsr[faceCellI];
 		   }           
 		   
-		   nutw[faceI] = 0.21*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+		   nutw[faceI] = 0.21*kr[faceCellI]*tpr[faceCellI]*T;
 		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
 		
