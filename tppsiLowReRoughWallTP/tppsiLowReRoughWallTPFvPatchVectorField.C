@@ -201,7 +201,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-    const volScalarField& kr = mesh.lookupObject<volScalarField>("k");;
+    const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
 	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");

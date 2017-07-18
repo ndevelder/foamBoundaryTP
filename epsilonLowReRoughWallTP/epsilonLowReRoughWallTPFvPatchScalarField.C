@@ -328,9 +328,11 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
 			
-			scalar epsMult = 0.229*pow(5.0/kPlus,1.5) + psiw[faceI];
+			scalar utausqr = (nuw[faceI]+nutw[faceI])*magGradUw[faceI];
 			
-			scalar epsCalc = epsMult*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],1.5)/(nuw[faceI]+nutw[faceI]);
+			scalar epsMult = 0.229*pow(5.0/kPlus,2.0)*utausqr + psiw[faceI];
+			
+			scalar epsCalc = epsMult*utausqr/(nuw[faceI]+nutw[faceI]);
 			
 			if(kPlus<=5.0){
 				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);

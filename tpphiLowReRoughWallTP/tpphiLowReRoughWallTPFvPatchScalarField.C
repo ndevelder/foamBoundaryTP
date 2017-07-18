@@ -247,13 +247,13 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}else if(rType_ == "calcratio"){
 			
 			if(kPlus[faceI]<5.0){
-			  pkF = 0.0;
+			  pkF = 1e-10;
 			}else if(kPlus[faceI]<45.0){
 			  pkF = 0.12*pow(kPlus[faceI]/45.0,1.5) - 0.0014*(1.0 - (kPlus[faceI]/45.0));
 			}else if(kPlus[faceI]<90.0){
-			  pkF = 0.01*(kPlus[faceI] - 45.0)/45.0 + 0.12;
+			  pkF = 0.015*(kPlus[faceI] - 45.0)/45.0 + 0.12;
 			}else{
-			  pkF = 0.13;
+			  pkF = 0.135;
 			}
 			
 			if(pkF < 0.0){
