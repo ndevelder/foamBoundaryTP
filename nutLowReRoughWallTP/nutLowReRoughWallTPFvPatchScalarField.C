@@ -153,10 +153,10 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(p, iF, dict),
-    roughnessHeight_(readScalar(dict.lookup("roughnessHeight"))),
-    roughnessConstant_(readScalar(dict.lookup("roughnessConstant"))),
-    roughnessFudgeFactor_(readScalar(dict.lookup("roughnessFudgeFactor"))),
-	nutExp_(dict.lookup("nutExp"))
+    roughnessHeight_(dict.lookupOrDefault<scalar>("roughnessHeight",0.0)),
+    roughnessConstant_(dict.lookupOrDefault<scalar>("roughnessConstant",0.0)),
+    roughnessFudgeFactor_(dict.lookupOrDefault<scalar>("roughnessFudgeFactor",0.0)),
+	nutExp_(dict.lookupOrDefault<word>("nutExp","default"))
 {}
 
 
