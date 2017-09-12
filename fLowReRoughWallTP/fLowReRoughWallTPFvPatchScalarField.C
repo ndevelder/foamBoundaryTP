@@ -217,8 +217,13 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuEffw;
 		
-		//fw[faceI] = 5.0*(epsr.boundaryField()[patchI][faceI]/kr.boundaryField()[patchI][faceI])*tpr.boundaryField()[patchI][faceI];
-		fw[faceI] = -2.0*nuw[faceI]*tpr.boundaryField()[patchI][faceI]/pow(y[faceI],2.0);
+		//fw[faceI] = -20.0*sqr(nuw[faceI])*(kr[faceCellI])*tpr[faceCellI]/(epsr.boundaryField()[patchI][faceI]*sqr(sqr(y[faceI])));
+		//fw[faceI] = -5.0*(epsr.boundaryField()[patchI][faceI]/kr[faceCellI])*tpr[faceCellI];
+		//fw[faceI] = -2.0*nuw[faceI]*tpr[faceCellI]/sqr(y[faceI]);
+		
+		fw[faceI] = 0.0;
+		
+		//Info << fw[faceI] << endl;
 		
     }
 	
