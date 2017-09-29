@@ -194,7 +194,8 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
-	
+	const volScalarField& tppr = mesh.lookupObject<volScalarField>("tpProd");
+	const volVectorField& tps = mesh.lookupObject<volVectorField>("tppsi");
 	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
 		
@@ -203,12 +204,22 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
+	
+	const volScalarField& tprSqrt = mesh.lookupObject<volScalarField>("tpphiSqrt");
+	const scalarField TpSqrt = tprSqrt.boundaryField()[patchI].snGrad();
+	const scalarField magSqrGradTpSqrt = magSqr(TpSqrt);
     
     const scalar Cmu25 = pow(Cmu_, 0.25);
 	const scalar Cmu12 = pow(Cmu_, 0.5);
 	
 	tmp<scalarField> tfw(new scalarField(nutw.size()));
 	scalarField& fw = tfw();
+	
+	scalar fwt = 0;
+	scalar pF = 0;
+	scalar tF = 0;
+	scalar yF = 0;
+	scalar tD = 0;
     
     forAll(nutw, faceI)
     {
@@ -217,15 +228,51 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuEffw;
 		
+		scalar iTime = min(epsr[faceCellI]/(kr[faceCellI]+ROOTVSMALL), 1.0/(sqrt(nuw[faceI]/(epsr[faceCellI] + ROOTVSMALL))));
+		scalar tTime = kr[faceCellI]/epsr[faceCellI];
+		
+		scalar tMult = -5.0*iTime;		
+		scalar pkgMult = -2.0*nuw[faceI]*magSqrGradTpSqrt[faceI]/(tpr[faceCellI]+ROOTVSMALL);
+		scalar ysMult = -2.0*nuw[faceI]/sqr(y[faceI]);
+		scalar tdMult = -20.0*sqr(nuw[faceI])*tTime/sqr(sqr(y[faceI]));
+		
 		//fw[faceI] = -20.0*sqr(nuw[faceI])*(kr[faceCellI])*tpr[faceCellI]/(epsr.boundaryField()[patchI][faceI]*sqr(sqr(y[faceI])));
-		//fw[faceI] = -5.0*(epsr.boundaryField()[patchI][faceI]/kr[faceCellI])*tpr[faceCellI];
-		//fw[faceI] = -2.0*nuw[faceI]*tpr[faceCellI]/sqr(y[faceI]);
+		//fw[faceI] = -5.0*iTime*tpr[faceCellI];
+		//if(kPlus < 4.0){
+			//fw[faceI] = -2.0*nuw[faceI]*tpr[faceCellI]/sqr(y[faceI]);
+		//}else{
+			//fw[faceI] = -2.0*(1.0 - min(kPlus/90.0,1.0))*nuw[faceI]*magSqrGradTpSqrt[faceI];   
+			//fw[faceI] = -20.0*sqr(nuw[faceI])*(kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI])/(epsr.boundaryField()[patchI][faceI]*sqr(sqr(y[faceI] + ks_)));
+		    //fw[faceI] = 10.0*sqr(1.0 - (6.0/10.0)*min(kPlus/90.0,1.0))*(epsr.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI]+SMALL))*tpr.boundaryField()[patchI][faceI];
+		    //fw[faceI] = -5.0*((epsr.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI]+SMALL))*tpr.boundaryField()[patchI][faceI] - (0.6/5.0)*tppr.boundaryField()[patchI][faceI]);
+		//}
+		//fw[faceI] = -5.0*(nuw[faceI]/(nuw[faceI] + nutw[faceI]))*(epsr[faceCellI]/(kr[faceCellI]+SMALL))*tpr[faceCellI];
+		//if(TpSqrt[faceI] < 0.0){
+			
+	   // if(tMult < 2.0*pkgMult){
+		//   fw[faceI] = tMult*tpr[faceCellI]; // + (150.0/(kPlus + SMALL))*tppr.boundaryField()[patchI][faceI]*mag(tpr.boundaryField()[patchI][faceI]);
+       //    fwt = 1; 
+		//}else{
+		//   fw[faceI] = pkgMult*tpr[faceCellI];
+       //    fwt = 2;		   
+		//}
+		
+		//tF = tMult;
+		//pF = pkgMult;
+		//yF = ysMult;
+		//tD = tdMult;
+		//fw[faceI] = 20.0/(kr.boundaryField()[patchI][faceI]+SMALL);
+		
+		//	fw[faceI] = -2.0*nuw[faceI]*magSqrGradTpSqrt[faceI];
 		
 		fw[faceI] = 0.0;
 		
-		//Info << fw[faceI] << endl;
-		
+		//Info << "iTime: " << iTime << " fwall: " << fw[faceI] << endl;
+	    //Info << "k+: " << kPlus << fw[faceI] << " -- " << kr.boundaryField()[patchI][faceI] << " -- " << epsr.boundaryField()[patchI][faceI] << " -- " << tpr.boundaryField()[patchI][faceI] <<endl;
+		//Info << "gradtpphisqrt: " << TpSqrt[faceI] << endl;
     }
+	
+	//Info << "Using eqn: " << fwt << " tsFw: " << tF << " gradFw: " << pF << " ysFw: " << yF << " tD: " << tD << endl;
 	
 	operator==(fw);
 

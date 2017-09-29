@@ -277,6 +277,60 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}
 	}
 	
+	
+	if(epsType_ == "hellsten"){  
+
+        Info << "Using Hellsten Epsilon BC" << endl;
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);
+			
+			// Use epsilon constant region formula
+			if(kPlus<=5.0){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else if(kPlus>5.0 && kPlus<=25.0){
+				epsC = pow(50.0/kPlus,2.0);
+				epsw[faceI] = kr.boundaryField()[patchI][faceI]*epsC*((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(nuw[faceI]+nutw[faceI]);
+			}else{
+				epsC = max(100.0/kPlus,1.0);
+				epsw[faceI] = kr.boundaryField()[patchI][faceI]*epsC*((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(nuw[faceI]+nutw[faceI]);
+			}
+			
+			//Info << epsw[faceI] << "--" << kr.boundaryField()[patchI][faceI]<< "--"  << epsC << "--" << ((nuw[faceI]+nutw[faceI])*magGradUw[faceI]) << endl;
+			
+			
+		}
+	}
+	
+	
+	if(epsType_ == "knopp"){
+
+		Info << "Using Knopp Epsilon BC" << endl;
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];		
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);
+			
+			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
+			scalar dz = dzm*0.03*ks_;
+			
+			// Use epsilon constant region formula
+			if(kPlus<=5.0){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = kr.boundaryField()[patchI][faceI]*sqrt((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(0.3*0.41*dz);
+			}
+			
+			
+		}
+	}
+	
+	
 	if(epsType_ == "smooth"){
 		
 		forAll(nutw, faceI)
@@ -332,7 +386,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			scalar epsMult = 0.229*pow(5.0/kPlus,2.0)*utausqr + psiw[faceI];
 			
-			scalar epsCalc = epsMult*utausqr/(nuw[faceI]+nutw[faceI]);
+			scalar epsCalc = epsMult*utausqr/(nuw[faceI]);
 			
 			if(kPlus<=5.0){
 				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
