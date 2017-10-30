@@ -190,9 +190,15 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
+	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
+	dictionary bCoeffDict(rasDictionary.subDict("boundaryCoeffs"));
+	const scalar& cMuw = readScalar(bCoeffDict.lookup("cMu"));
+	const scalar& betaKw = readScalar(bCoeffDict.lookup("betaK"));
+	
 	const volScalarField& kr = db().lookupObject<volScalarField>("k");
-	volScalarField kSqrtr = sqrt(kr);
-	scalarField gradkSqrt = kSqrtr.boundaryField()[patchI].snGrad();
+	const volScalarField& ksr = db().lookupObject<volScalarField>("kSqrt");
+
+	scalarField gradkSqrt = ksr.boundaryField()[patchI].snGrad();
 	
 	const volScalarField& prodr = db().lookupObject<volScalarField>("tpProd");
 	
@@ -292,7 +298,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			if(kPlus<=5.0){
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			}else if(kPlus>5.0 && kPlus<=25.0){
-				epsC = pow(50.0/kPlus,2.0);
+				epsC = pow(15.0/kPlus,2.0);
 				epsw[faceI] = kr.boundaryField()[patchI][faceI]*epsC*((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(nuw[faceI]+nutw[faceI]);
 			}else{
 				epsC = max(100.0/kPlus,1.0);
@@ -341,6 +347,19 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}
 		
 	}
+
+	
+	if(epsType_ == "smoothdelta"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];
+		
+			epsw[faceI] = 2.0*nuw[faceI]*kr[faceCellI]/sqr(y[faceI]);
+		}
+		
+	}
+
 	
 	if(epsType_ == "utau4"){
 		
@@ -355,9 +374,9 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
 			
-			scalar epsMult = min( 0.21*(1.0 + log(kPlus)/4.75) , 0.41);
+			scalar epsMult = (cMuw*0.135/betaKw)*max(pow(5.0/kPlus,0.09),0.1765);
 			
-			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/nuEff;
+			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/(nuw[faceI]+nutw[faceI]);
 			
 			if(kPlus<=5.0){
 				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
@@ -384,9 +403,9 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			scalar utausqr = (nuw[faceI]+nutw[faceI])*magGradUw[faceI];
 			
-			scalar epsMult = 0.229*pow(5.0/kPlus,2.0)*utausqr + psiw[faceI];
+			scalar epsMult = 0.229*pow(5.0/kPlus,0.2)*utausqr + psiw[faceI];
 			
-			scalar epsCalc = epsMult*utausqr/(nuw[faceI]);
+			scalar epsCalc = epsMult*utausqr/(nuw[faceI]+nutw[faceI]);
 			
 			if(kPlus<=5.0){
 				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);

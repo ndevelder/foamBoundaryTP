@@ -193,15 +193,15 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
-	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
-	const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
+	//const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
+	//dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
+	//const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
+	//const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	//const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
-	const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
+	//const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
+	//const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
 		
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
 	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
@@ -209,30 +209,38 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
     
-    const scalar Cmu25 = pow(Cmu_, 0.25);
-	const scalar Cmu12 = pow(Cmu_, 0.5);
+    //const scalar Cmu25 = pow(Cmu_, 0.25);
+	//const scalar Cmu12 = pow(Cmu_, 0.5);
 	
 	tmp<scalarField> tkw(new scalarField(nutw.size()));
 	scalarField& kw = tkw();
     
     forAll(nutw, faceI)
     {
-		scalar nuEffw = nuw[faceI];
+		scalar nuEffw = nuw[faceI]+nutw[faceI];
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuEffw;
+		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/nuw[faceI];
 		
-		if(kType_ == "quad"){
-			kw[faceI] = min(1.0,pow(kPlus/90.0,2.0))*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
-	    }
-		else if(kType_ == "linear"){
-			kw[faceI] = min(1.0,kPlus/90.0)*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
-		}
-		else if(kType_ == "sqrt"){
-			kw[faceI] = min(1.0,pow(kPlus/90.0,0.5))*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
-		}
-		else{
-			kw[faceI] = min(1.0,kPlus/90.0)*(nuw[faceI]+nutw[faceI])*magGradUw[faceI]/0.3;
+		if(kPlus < 5.0){
+		
+			kw[faceI] = 1e-10;
+		
+		}else{
+					
+			if(kType_ == "quad"){
+				kw[faceI] = min(1.0,pow(kPlus/90.0,2.0))*nuEffw*magGradUw[faceI]/0.3;
+			}
+			else if(kType_ == "linear"){
+				kw[faceI] = min(1.0,kPlus/90.0)*nuEffw*magGradUw[faceI]/0.3;
+			}
+			else if(kType_ == "sqrt"){
+				kw[faceI] = min(1.0,pow(kPlus/90.0,0.5))*nuEffw*magGradUw[faceI]/0.3;
+			}
+			else{
+				kw[faceI] = min(1.0,kPlus/90.0)*nuEffw*magGradUw[faceI]/0.3;
+			}
+			
 		}
 		
 		//if(patch().name() == "FOIL_LEAD"){

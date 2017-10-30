@@ -78,6 +78,7 @@ void fLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("grex") << ks_ << token::END_STATEMENT << nl;
 }
 
 
@@ -94,6 +95,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
+	grex_(1.0),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -113,6 +115,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
+	grex_(ptf.grex_),
     yPlusLam_(ptf.yPlusLam_)
 {
     checkType();
@@ -131,6 +134,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
+	grex_(dict.lookupOrDefault<scalar>("grex", 1.0)),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -147,6 +151,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	grex_(wfpsf.grex_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -164,6 +169,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+	grex_(wfpsf.grex_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -186,10 +192,6 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
-	
-	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
-	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
-	const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
@@ -220,6 +222,8 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	scalar tF = 0;
 	scalar yF = 0;
 	scalar tD = 0;
+	scalar kP = 0;
+	scalar pD = 0;
     
     forAll(nutw, faceI)
     {
@@ -228,13 +232,15 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuEffw;
 		
-		scalar iTime = min(epsr[faceCellI]/(kr[faceCellI]+ROOTVSMALL), 1.0/(sqrt(nuw[faceI]/(epsr[faceCellI] + ROOTVSMALL))));
+		scalar iTime = min(epsr[faceCellI]/(kr[faceCellI]+ROOTVSMALL), 1.0/(6.0*(sqrt(nuw[faceI]/(epsr[faceCellI] + ROOTVSMALL)))));
 		scalar tTime = kr[faceCellI]/epsr[faceCellI];
 		
 		scalar tMult = -5.0*iTime;		
 		scalar pkgMult = -2.0*nuw[faceI]*magSqrGradTpSqrt[faceI]/(tpr[faceCellI]+ROOTVSMALL);
 		scalar ysMult = -2.0*nuw[faceI]/sqr(y[faceI]);
 		scalar tdMult = -20.0*sqr(nuw[faceI])*tTime/sqr(sqr(y[faceI]));
+		
+		scalar pod = tppr[faceCellI]*tTime;
 		
 		//fw[faceI] = -20.0*sqr(nuw[faceI])*(kr[faceCellI])*tpr[faceCellI]/(epsr.boundaryField()[patchI][faceI]*sqr(sqr(y[faceI])));
 		//fw[faceI] = -5.0*iTime*tpr[faceCellI];
@@ -257,22 +263,35 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
        //    fwt = 2;		   
 		//}
 		
-		//tF = tMult;
-		//pF = pkgMult;
+		if(kPlus < 5.0){
+			fw[faceI] = 0.0;			
+		}else{
+			fw[faceI] = 0.33*(min(pow((kPlus-4.999)/90.0,grex_),1.0))*iTime*tpr[faceCellI];
+		}
+		
+		//fw[faceI] = ysMult*tpr[faceCellI];
+		
+		//fw[faceI] = -0.15;
+		
+		tF = fw[faceI];
+		pF = iTime*tpr[faceCellI];
+		kP = kPlus;
+		pD = pod;
 		//yF = ysMult;
 		//tD = tdMult;
 		//fw[faceI] = 20.0/(kr.boundaryField()[patchI][faceI]+SMALL);
 		
 		//	fw[faceI] = -2.0*nuw[faceI]*magSqrGradTpSqrt[faceI];
 		
-		fw[faceI] = 0.0;
+		
 		
 		//Info << "iTime: " << iTime << " fwall: " << fw[faceI] << endl;
 	    //Info << "k+: " << kPlus << fw[faceI] << " -- " << kr.boundaryField()[patchI][faceI] << " -- " << epsr.boundaryField()[patchI][faceI] << " -- " << tpr.boundaryField()[patchI][faceI] <<endl;
 		//Info << "gradtpphisqrt: " << TpSqrt[faceI] << endl;
     }
 	
-	//Info << "Using eqn: " << fwt << " tsFw: " << tF << " gradFw: " << pF << " ysFw: " << yF << " tD: " << tD << endl;
+
+	Info << "fw: " << tF << " epskphik: " << pF << " kPlus: " << kP << " pod: " << pD << endl;
 	
 	operator==(fw);
 

@@ -221,20 +221,19 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
     {
         label faceCellI = patch().faceCells()[faceI];		
 		
-		vector unitVort = vort.boundaryField()[patchI][faceI]/magVort[faceI];
+		// Roughness
+		scalar nuEff = nuw[faceI] + nutw[faceI];
+		scalar uTauSqrVisc = nuw[faceI]*magGradUw[faceI];
+		scalar kPlus = ks_*uTauSqrVisc/nuw[faceI];
 		
-		vector maxTppsi = 0.35*unitVort;
 
-
-		if(pswType_ == "phi"){		
-			psw[faceI] = cr_*nuw[faceI]*tpr.boundaryField()[patchI][faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
-        }
-		else if(pswType_ == "nu"){		
-			psw[faceI] = 2.0*nuw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
-        }
-		else{
+		//if(pswType_ == "phi")
+		if(kPlus < 5.0){
+			psw[faceI] = vector(0,0,0);
+		}else{	    
 		    psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
 		}
+		
                 //if(patch().name() == "FOIL_TOP"){
                 //   Pout << "Psw: " << psw[faceI]  << endl;
                 //}

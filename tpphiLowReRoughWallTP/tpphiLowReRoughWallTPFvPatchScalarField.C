@@ -261,7 +261,19 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			}
 			
 			phw[faceI] = pkF;
-						
+
+		}else if(rType_ == "pow"){
+			
+			if(kPlus[faceI]<5.001){
+			  pkF = 1e-10;
+			}else if(kPlus[faceI]<95.0){
+			  pkF = pkC_*pow((kPlus[faceI]-5.0)/90.0,0.05);
+			}else{
+			  pkF = pkC_;
+			}
+			
+			phw[faceI] = pkF;
+			
 		}else if(rType_ == "fixedratio"){ 
 		
 			phw[faceI] = pkC_;

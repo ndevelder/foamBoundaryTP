@@ -52,10 +52,9 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
     const scalarField& y = rasModel.y()[patchI];
 		
 	const dictionary& rasDictionary = db().lookupObject<IOdictionary>("RASProperties");
-	dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
-	word tslimiter(tpCoeffDict.lookup("tslimiter"));
-	word tsEps(tpCoeffDict.lookup("timeScaleEps"));
-	scalar nRMax = readScalar(tpCoeffDict.lookup("nutRatMax"));
+	dictionary bCoeffDict(rasDictionary.subDict("boundaryCoeffs"));
+	word tslimiter(bCoeffDict.lookup("tslimiter"));
+	scalar nRMax = readScalar(bCoeffDict.lookup("nutRatMax"));
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
@@ -78,21 +77,11 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		if(nutExp_ == "default"){
 			
 		   if(tslimiter == "true"){
-				if(tsEps == "epsilon"){
-					T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL), 6.0*sqrt(nuw[faceI]/(epsr[faceCellI]+SMALL)));
-				}
-				if(tsEps == "epsHat" || tsEps != "epsilon"){
-					T = 1.0/(epsHr[faceCellI]+SMALL);
-				}
+				T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL), 6.0*sqrt(nuw[faceI]/(epsr[faceCellI]+SMALL)));
 		   }
 		   
 		   if(tslimiter == "false"){
-				if(tsEps == "epsilon"){
-					T = kr[faceCellI]/(epsr[faceCellI]+SMALL);
-				}
-				if(tsEps == "epsHat" || tsEps != "epsilon"){
-					T = 1.0/(epsHr[faceCellI]+SMALL);
-				}
+				T = kr[faceCellI]/(epsr[faceCellI]+SMALL);
 		   }           
 		   
 		   nutw[faceI] = 0.21*kr[faceCellI]*tpr[faceCellI]*T;

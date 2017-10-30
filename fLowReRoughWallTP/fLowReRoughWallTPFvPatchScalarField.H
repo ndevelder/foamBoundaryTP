@@ -72,6 +72,9 @@ protected:
 		//- Ks roughness sandgrain height
 		scalar ks_;
 		
+		//- Growth exponent rough to smooth
+		scalar grex_;
+		
 
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;
