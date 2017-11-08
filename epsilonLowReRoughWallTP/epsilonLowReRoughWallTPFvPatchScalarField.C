@@ -226,6 +226,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	volScalarField& GdKw = const_cast<volScalarField&>(db().lookupObject<volScalarField>("tpProd"));
 	
+	scalar epW = 0.0;
 	
 	if(epsType_ == "rough"){
 
@@ -372,7 +373,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
 			
-			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
+			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.5);
 			
 			scalar epsMult = (cMuw*0.135/betaKw)*max(pow(5.0/kPlus,0.09),0.1765);
 			
@@ -383,7 +384,43 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			}else{
 				epsw[faceI] = epsCalc;
 			}
+			
+			epW = epsw[faceI];
 		}
+		
+		Info << "epw: " << epW << endl;
+		
+	}
+	
+	if(epsType_ == "nueff"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEff = nuw[faceI]+nutw[faceI];
+			label faceCellI = patch().faceCells()[faceI];
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/(nuw[faceI]);			
+			
+			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+			
+			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.5);
+			
+			//scalar epsMult = max((nutw[faceI]/nuEff)*(0.5+0.5*min((kPlus-5.0)/45.0,1.0)),0.229);
+			
+			scalar epsMult = max(90.0/kPlus,0.771)*(nutw[faceI]/nuEff) + 0.229;
+			
+			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/(nuw[faceI]+nutw[faceI]);
+			
+			if(kPlus<=5.0){
+				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			}else{
+				epsw[faceI] = epsCalc;
+			}
+			
+			epW = epsw[faceI];
+		}
+		
+		Info << "epw: " << epW << endl;
 		
 	}
 

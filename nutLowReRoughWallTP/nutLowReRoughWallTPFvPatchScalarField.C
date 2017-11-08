@@ -55,12 +55,14 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	dictionary bCoeffDict(rasDictionary.subDict("boundaryCoeffs"));
 	word tslimiter(bCoeffDict.lookup("tslimiter"));
 	scalar nRMax = readScalar(bCoeffDict.lookup("nutRatMax"));
+	scalar cMuBc = readScalar(bCoeffDict.lookup("cMu"));
 	
 	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
 	const volScalarField& epsHr = mesh.lookupObject<volScalarField>("epsHat");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
-
+    const volVectorField& tpsr = mesh.lookupObject<volVectorField>("tppsi");
+	
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");	
 	
 	const fvPatchVectorField& Uw = rasModel.U().boundaryField()[patchI];
@@ -70,6 +72,9 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	scalarField& nutw = tnutw();
 	
 	scalar T = 0.0;
+	scalar nW = 0.0;
+	scalar phW = 0.0;
+	scalar nutTmp = 0.0;
 
     forAll(kr.boundaryField()[patchI], faceI)
     {
@@ -77,21 +82,38 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		if(nutExp_ == "default"){
 			
 		   if(tslimiter == "true"){
-				T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL), 6.0*sqrt(nuw[faceI]/(epsr[faceCellI]+SMALL)));
+				T = max(kr.boundaryField()[patchI][faceI]/(epsr.boundaryField()[patchI][faceI]+SMALL), 6.0*sqrt(nuw[faceI]/(epsr.boundaryField()[patchI][faceI]+SMALL)));
 		   }
 		   
 		   if(tslimiter == "false"){
-				T = kr[faceCellI]/(epsr[faceCellI]+SMALL);
+				T = kr.boundaryField()[patchI][faceI]/(epsr.boundaryField()[patchI][faceI]+SMALL);
 		   }           
 		   
-		   nutw[faceI] = 0.21*kr[faceCellI]*tpr[faceCellI]*T;
-		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
+		   nutTmp = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+		   nutTmp = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
 		
 		if(nutExp_ == "ksquared"){
-           nutw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
-		}		
+           nutTmp = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
+		}
+		
+		if(nutExp_ == "sdiv"){
+		   nutTmp = epsr.boundaryField()[patchI][faceI]/sqr(magGradUw[faceI]);
+		}
+		
+		if(nutExp_ == "psi"){
+		   nutTmp = mag(tpsr.boundaryField()[patchI][faceI])*kr.boundaryField()[patchI][faceI]/magGradUw[faceI];
+		}
+		
+		nutw[faceI] = nutTmp;
+		
+        //nutw[faceI] = 1e-10;
+        nW = nutw[faceI];
+        phW = tpr.boundaryField()[patchI][faceI];		
+		
     }
+	
+	Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
 
 	return tnutw;
 }

@@ -74,7 +74,7 @@ scalar fLowReRoughWallTPFvPatchScalarField::calcYPlusLam
 
 void fLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
 {
-    os.writeKeyword("Cmu") << Cmu_ << token::END_STATEMENT << nl;
+    os.writeKeyword("Cf") << Cf_ << token::END_STATEMENT << nl;
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
@@ -91,7 +91,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
 )
 :
     fixedValueFvPatchScalarField(p, iF),
-    Cmu_(0.09),
+    Cf_(1.0),
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
@@ -111,7 +111,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
 )
 :
     fixedValueFvPatchScalarField(ptf, p, iF, mapper),
-    Cmu_(ptf.Cmu_),
+    Cf_(ptf.Cf_),
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
@@ -130,7 +130,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
 )
 :
     fixedValueFvPatchScalarField(p, iF, dict),
-    Cmu_(dict.lookupOrDefault<scalar>("Cmu", 0.09)),
+    Cf_(dict.lookupOrDefault<scalar>("Cf", 1.0)),
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
@@ -147,7 +147,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
 )
 :
     fixedValueFvPatchScalarField(wfpsf),
-    Cmu_(wfpsf.Cmu_),
+    Cf_(wfpsf.Cf_),
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
@@ -165,7 +165,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
 )
 :
     fixedValueFvPatchScalarField(wfpsf, iF),
-    Cmu_(wfpsf.Cmu_),
+    Cf_(wfpsf.Cf_),
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
@@ -210,9 +210,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const volScalarField& tprSqrt = mesh.lookupObject<volScalarField>("tpphiSqrt");
 	const scalarField TpSqrt = tprSqrt.boundaryField()[patchI].snGrad();
 	const scalarField magSqrGradTpSqrt = magSqr(TpSqrt);
-    
-    const scalar Cmu25 = pow(Cmu_, 0.25);
-	const scalar Cmu12 = pow(Cmu_, 0.5);
+
 	
 	tmp<scalarField> tfw(new scalarField(nutw.size()));
 	scalarField& fw = tfw();
@@ -266,7 +264,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		if(kPlus < 5.0){
 			fw[faceI] = 0.0;			
 		}else{
-			fw[faceI] = 0.33*(min(pow((kPlus-4.999)/90.0,grex_),1.0))*iTime*tpr[faceCellI];
+			fw[faceI] = Cf_*(min(pow((kPlus-4.999)/90.0,grex_),1.0))*iTime*tpr.boundaryField()[patchI][faceI];
 		}
 		
 		//fw[faceI] = ysMult*tpr[faceCellI];
@@ -274,7 +272,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//fw[faceI] = -0.15;
 		
 		tF = fw[faceI];
-		pF = iTime*tpr[faceCellI];
+		pF = iTime*tpr.boundaryField()[patchI][faceI];
 		kP = kPlus;
 		pD = pod;
 		//yF = ysMult;
@@ -311,7 +309,7 @@ tmp<scalarField> fLowReRoughWallTPFvPatchScalarField::yPlus() const
     const scalarField kwc = k.boundaryField()[patchI].patchInternalField();
     const scalarField& nuw = rasModel.nu().boundaryField()[patchI];
 
-    return pow(Cmu_, 0.25)*y*sqrt(kwc)/nuw;
+    return pow(0.09, 0.25)*y*sqrt(kwc)/nuw;
 }
 
 void fLowReRoughWallTPFvPatchScalarField::evaluate

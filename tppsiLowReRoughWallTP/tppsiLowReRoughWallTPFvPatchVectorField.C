@@ -203,6 +203,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 	
     const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
 	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
+	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
 	
 	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI]);
@@ -227,11 +228,20 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		scalar kPlus = ks_*uTauSqrVisc/nuw[faceI];
 		
 
-		//if(pswType_ == "phi")
-		if(kPlus < 5.0){
-			psw[faceI] = vector(0,0,0);
-		}else{	    
-		    psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+		if(pswType_ == "nut"){
+			if(kPlus < 5.0){
+				psw[faceI] = vector(0,0,0);
+			}else{	    
+				psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+			}
+		}
+		
+		if(pswType_ == "itime"){
+			if(kPlus < 5.0){
+				psw[faceI] = vector(0,0,0);
+			}else{	    
+				psw[faceI] = epsr[faceCellI]*vort[faceCellI]/(kr[faceCellI]*sqr(magGradUw[faceI]));
+			}
 		}
 		
                 //if(patch().name() == "FOIL_TOP"){

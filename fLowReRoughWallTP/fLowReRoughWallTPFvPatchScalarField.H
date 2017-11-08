@@ -61,7 +61,7 @@ protected:
     // Protected data
 
         //- Cmu coefficient
-        scalar Cmu_;
+        scalar Cf_;
 
         //- Von Karman constant
         scalar kappa_;

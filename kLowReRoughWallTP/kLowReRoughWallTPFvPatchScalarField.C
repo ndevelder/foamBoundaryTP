@@ -214,6 +214,9 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	tmp<scalarField> tkw(new scalarField(nutw.size()));
 	scalarField& kw = tkw();
+	
+	scalar kpW = 0.0;
+	scalar kpP = 0.0;
     
     forAll(nutw, faceI)
     {
@@ -243,11 +246,18 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 		}
 		
+		kpW = kw[faceI];
+		kpP = kPlus;
+		
+		//Info << kw[faceI] << " | " << magGradUw[faceI] << " | " << nuEffw << " | " << kPlus << endl;
+		
 		//if(patch().name() == "FOIL_LEAD"){
 			//Pout<< faceI << " kw: "<<  kw[faceI] << " kPlus: "<<  kPlus << " nu + nut: "<< nuw[faceI]+nutw.boundaryField()[patchI][faceI] << "magVort: "<< mag(vort[faceCellI]) <<endl;
 			//Pout<< "Vorticity W1: " << vort[faceCellI] << "  Vorticity W2: " << vortPI[faceI] <<endl;
 		//}
     }
+	
+	Info << "kw: " <<  kpW << " kPlus: " << kpP << endl;
 	
 	operator==(kw);
 
