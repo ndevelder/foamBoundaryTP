@@ -210,6 +210,11 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
+
+	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
+	const scalarField psiDV = magPsiw/magGradUw;
+	
     
     tmp<scalarField> tphw(new scalarField(nutw.size()));
 	scalarField& phw = tphw();
@@ -221,10 +226,13 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
     forAll(nutw, faceI)
     {
-		scalar nuEffw = nuw[faceI];
+		scalar nuEffw = nuw[faceI]+nutw[faceI];
+		scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+		
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
-        kPlus[faceI] = ks_*utauw/nuEffw;
+		
+		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/nuw[faceI];
 		
 		if(rType_ == "channel") {
 			
@@ -234,10 +242,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		}else if(rType_ == "calculated"){
 			
-			if(kPlus[faceI]<30.0){
-			  pkF = 2.0*pow((kPlus[faceI]/90.0),2.0);
-			}else if(kPlus[faceI]<90.0){
-			  pkF = 0.18 + (0.088/70.0)*kPlus[faceI];
+			if(kPlus<30.0){
+			  pkF = 2.0*pow((kPlus/90.0),2.0);
+			}else if(kPlus<90.0){
+			  pkF = 0.18 + (0.088/70.0)*kPlus;
 			}else{
 			  pkF = 0.19 + (0.09/70.0)*100.0;
 			}
@@ -246,12 +254,12 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 		}else if(rType_ == "calcratio"){
 			
-			if(kPlus[faceI]<5.0){
+			if(kPlus<5.0){
 			  pkF = 1e-10;
-			}else if(kPlus[faceI]<45.0){
-			  pkF = 0.12*pow(kPlus[faceI]/45.0,1.5) - 0.0014*(1.0 - (kPlus[faceI]/45.0));
-			}else if(kPlus[faceI]<90.0){
-			  pkF = 0.015*(kPlus[faceI] - 45.0)/45.0 + 0.12;
+			}else if(kPlus<45.0){
+			  pkF = 0.12*pow(kPlus/45.0,1.5) - 0.0014*(1.0 - (kPlus/45.0));
+			}else if(kPlus<90.0){
+			  pkF = 0.015*(kPlus - 45.0)/45.0 + 0.12;
 			}else{
 			  pkF = 0.135;
 			}
@@ -264,10 +272,22 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
 		}else if(rType_ == "pow"){
 			
-			if(kPlus[faceI]<5.001){
+			if(kPlus<=5.5){
 			  pkF = 1e-10;
-			}else if(kPlus[faceI]<95.0){
-			  pkF = pkC_*pow((kPlus[faceI]-5.0)/90.0,0.05);
+			}else if(kPlus<=90.0){
+			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.05);
+			}else{
+			  pkF = pkC_;
+			}
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "develder"){
+			
+			if(kPlus<5.001){
+			  pkF = 1e-10;
+			}else if(kPlus<95.0){
+			  pkF = min(0.12+0.015*pow((kPlus)/90.0,0.02),pkC_);
 			}else{
 			  pkF = pkC_;
 			}

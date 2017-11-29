@@ -216,9 +216,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
 	
-	const fvPatchVectorField& tppsiw = lookupPatchField<volVectorField, vector>("tppsi");
-    const scalarField psiw = mag(tppsiw*kr.boundaryField()[patchI]);
-    
+	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI]*kr.boundaryField()[patchI]);
+    const scalarField psiDV = magPsiw/magGradUw;
+	
    	const scalar Cmu25 = pow(Cmu_, 0.25);
 	scalar epsC = 0.257;
 
@@ -227,6 +228,8 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	volScalarField& GdKw = const_cast<volScalarField&>(db().lookupObject<volScalarField>("tpProd"));
 	
 	scalar epW = 0.0;
+	scalar epWS = 0.0;
+	scalar epWR = 0.0;
 	
 	if(epsType_ == "rough"){
 
@@ -366,40 +369,51 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEff = nuw[faceI]+nutw[faceI];
-			label faceCellI = patch().faceCells()[faceI];
-			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/(nuw[faceI]);			
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];		
 			
 			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
 			
 			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.5);
 			
-			scalar epsMult = (cMuw*0.135/betaKw)*max(pow(5.0/kPlus,0.09),0.1765);
-			
-			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/(nuw[faceI]+nutw[faceI]);
-			
-			if(kPlus<=5.0){
-				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			scalar epsMult = max(min(sqr(kPlus/90.0),1.0)/0.3,0.23);
+						
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			}else{
-				epsw[faceI] = epsCalc;
+				epsw[faceI] = epsMult*pow((nuw[faceI]+psiDV[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]+psiDV[faceI]);
 			}
 			
 			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*pow((nuw[faceI]+psiDV[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]+psiDV[faceI]);
+			
 		}
 		
-		Info << "epw: " << epW << endl;
+		Info << "epw: " << epW << " epwS: " << epWS << " epwR: " << epWR << endl;
 		
 	}
+	
+	
+	scalar tOne = 0.0;
+	scalar tTwo = 0.0;
 	
 	if(epsType_ == "nueff"){
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEff = nuw[faceI]+nutw[faceI];
-			label faceCellI = patch().faceCells()[faceI];
-			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/(nuw[faceI]);			
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];			
 			
 			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
 			
@@ -407,20 +421,20 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			//scalar epsMult = max((nutw[faceI]/nuEff)*(0.5+0.5*min((kPlus-5.0)/45.0,1.0)),0.229);
 			
-			scalar epsMult = max(90.0/kPlus,0.771)*(nutw[faceI]/nuEff) + 0.229;
+			//scalar epsMult = max(min((kPlus/5.0)*(nutw[faceI]/nuEff),1.0),0.229);
 			
-			scalar epsCalc = epsMult*pow(nuEff*magGradUw[faceI],2.0)/(nuw[faceI]+nutw[faceI]);
+			scalar epsMult = 0.229*sqr(5.5/kPlus) + (nutw[faceI]/nuEffw);
 			
-			if(kPlus<=5.0){
-				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			if(kPlus<=5.5){
+				epsw[faceI] = (1.0-(nutw[faceI]/nuEffw))*2.0*nuw[faceI]*sqr(gradkSqrt[faceI]) + (nutw[faceI]/nuEffw)*pow(nuPsiw*magGradUw[faceI],2.0)/nuEffw;
 			}else{
-				epsw[faceI] = epsCalc;
+				epsw[faceI] = epsMult*pow(nuPsiw*magGradUw[faceI],2.0)/nuEffw;
 			}
 			
 			epW = epsw[faceI];
 		}
 		
-		Info << "epw: " << epW << endl;
+		Info << "epw: " << epW << "gTerm: " << tOne << "nTerm: " << tTwo << endl;
 		
 	}
 
@@ -429,20 +443,19 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI];
-			label faceCellI = patch().faceCells()[faceI];
-			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/nuEffw;			
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
-			//scalar epsCalc = min(2.0,(0.95 + kPlus/90.0))*0.229*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
+			label faceCellI = patch().faceCells()[faceI];		
 			
-			//scalar epsMult = min( 0.229*(1.0 + pow(kPlus/118.0, 1.5)) , 0.38);
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];			
 			
-			scalar utausqr = (nuw[faceI]+nutw[faceI])*magGradUw[faceI];
+			scalar utausqr = sqr(utauw);
 			
-			scalar epsMult = 0.229*pow(5.0/kPlus,0.2)*utausqr + psiw[faceI];
+			scalar epsMult = 0.23*min(pow(5.0/kPlus,1.0),1.0)*utausqr + magPsiw[faceI];
 			
-			scalar epsCalc = epsMult*utausqr/(nuw[faceI]+nutw[faceI]);
+			scalar epsCalc = epsMult*utausqr/nuPsiw;
 			
 			if(kPlus<=5.0){
 				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
@@ -451,6 +464,165 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			}
 		}
 		
+	}
+	
+	scalar eMp = 0.0;
+	scalar eMu = 0.0;
+	
+	if(epsType_ == "psi1"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			
+			scalar epsMult = max(magPsiw[faceI]/nuPsiw,0.23*nuPsiw*magGradUw[faceI]*sqr(5.5/kPlus)/nuw[faceI]);
+			
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = epsMult*nuPsiw*magGradUw[faceI];
+			}
+			
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*nuPsiw*magGradUw[faceI];
+			eMp = magPsiw[faceI];
+			eMu = 0.23*nuPsiw*magGradUw[faceI]*sqr(5.5/kPlus);
+			
+		}
+		
+		Info << "epw: " << epW << " epwS: " << epWS << " epwR: " << epWR << " eMp: " << eMp << " eMu: " << eMu << endl;
+	}
+	
+	
+	if(epsType_ == "psi2"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			
+			scalar epsMult = max(magPsiw[faceI],0.23*nuPsiw*magGradUw[faceI]*sqr(5.5/kPlus));
+			
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = epsMult*nuPsiw*magGradUw[faceI]/nuPsiw;
+			}
+			
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*nuPsiw*magGradUw[faceI]/nuPsiw;
+			eMp = magPsiw[faceI];
+			eMu = 0.23*nuPsiw*magGradUw[faceI]*sqr(5.5/kPlus);
+			
+		}
+		
+		Info << "epw: " << epW << " epwS: " << epWS << " epwR: " << epWR << " eMp: " << eMp << " eMu: " << eMu << endl;
+	}
+	
+	
+	if(epsType_ == "psi3"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			
+			scalar epsMult = magPsiw[faceI]/nuPsiw + 0.23*nuPsiw*magGradUw[faceI]*pow(5.5/kPlus,1.0)/nuw[faceI];
+			
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = epsMult*nuPsiw*magGradUw[faceI];
+			}
+			
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*nuPsiw*magGradUw[faceI];
+			eMp = magPsiw[faceI];
+			eMu = 0.23*nuPsiw*magGradUw[faceI]*sqr(5.5/kPlus);
+			
+		}
+		
+		Info << "epw: " << epW << " epwS: " << epWS << " epwR: " << epWR << " eMp: " << eMp << " eMu: " << eMu << endl;
+	}
+	
+	
+	if(epsType_ == "psi4"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			
+			scalar epsMult = magPsiw[faceI]/nuPsiw + 0.23*nuPsiw*magGradUw[faceI]*pow(min(25.0/kPlus,1.0),2.0)/nuw[faceI];
+			
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = epsMult*nuPsiw*magGradUw[faceI];
+			}
+			
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*nuPsiw*magGradUw[faceI];
+			eMp = magPsiw[faceI];
+			eMu = 0.23*nuPsiw*magGradUw[faceI]*pow(min(25.0/kPlus,1.0),2.0);
+			
+		}
+		
+		Info << "epw: " << epW << " epwS: " << epWS << " epwR: " << epWR << " eMp: " << eMp << " eMu: " << eMu << endl;
+	}
+	
+	
+	if(epsType_ == "develder"){
+		
+		forAll(nutw, faceI)
+		{
+			label faceCellI = patch().faceCells()[faceI];
+			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			scalar nuEffw = nuw[faceI] + nutw[faceI];
+			scalar cRe1 = 0.2;
+			
+			scalar utausqr = nuEffw*magGradUw[faceI];
+			
+			scalar epsMult = max(0.21*cRe1*phir.boundaryField()[patchI][faceI]*kPlus*(nuw[faceI]/nuEffw)*sqrt(utausqr)/sqrt(kr.boundaryField()[patchI][faceI]),0.229*utausqr);
+			
+			scalar epsCalc = epsMult*utausqr/nuEffw;
+			
+			if(kPlus<=5.0){
+				epsw[faceI] = min(2.0*nuw[faceI]*sqr(gradkSqrt[faceI]),epsCalc);
+			}else{
+				epsw[faceI] = epsCalc;
+			}
+			
+			epW = epsw[faceI];
+		}
+		
+		Info << "epw: " << epW << endl;
 	}
 
 	

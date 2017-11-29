@@ -210,6 +210,10 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const volScalarField& tprSqrt = mesh.lookupObject<volScalarField>("tpphiSqrt");
 	const scalarField TpSqrt = tprSqrt.boundaryField()[patchI].snGrad();
 	const scalarField magSqrGradTpSqrt = magSqr(TpSqrt);
+	
+	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
+	const scalarField psiDV = magPsiw/magGradUw;
 
 	
 	tmp<scalarField> tfw(new scalarField(nutw.size()));
@@ -225,10 +229,14 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     
     forAll(nutw, faceI)
     {
-		scalar nuEffw = nuw[faceI];
+		scalar nuEffw = nuw[faceI]+nutw[faceI];
+		scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+		
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
-        scalar kPlus = ks_*utauw/nuEffw;
+		
+		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+        scalar kPlus = ks_*utauw/nuw[faceI];
+		
 		
 		scalar iTime = min(epsr[faceCellI]/(kr[faceCellI]+ROOTVSMALL), 1.0/(6.0*(sqrt(nuw[faceI]/(epsr[faceCellI] + ROOTVSMALL)))));
 		scalar tTime = kr[faceCellI]/epsr[faceCellI];
@@ -261,10 +269,10 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
        //    fwt = 2;		   
 		//}
 		
-		if(kPlus < 5.0){
+		if(kPlus <= 5.5){
 			fw[faceI] = 0.0;			
 		}else{
-			fw[faceI] = Cf_*(min(pow((kPlus-4.999)/90.0,grex_),1.0))*iTime*tpr.boundaryField()[patchI][faceI];
+			fw[faceI] = Cf_*(min(pow((kPlus-5.0)/90.0,grex_),1.0))*iTime*tpr.boundaryField()[patchI][faceI];
 		}
 		
 		//fw[faceI] = ysMult*tpr[faceCellI];
@@ -289,7 +297,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     }
 	
 
-	Info << "fw: " << tF << " epskphik: " << pF << " kPlus: " << kP << " pod: " << pD << endl;
+	//Info << "fw: " << tF << " epskphik: " << pF << " kPlus: " << kP << " pod: " << pD << endl;
 	
 	operator==(fw);
 

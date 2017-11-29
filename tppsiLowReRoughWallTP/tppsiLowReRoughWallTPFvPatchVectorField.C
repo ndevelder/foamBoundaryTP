@@ -215,34 +215,51 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 	const vectorField GradUw = Uw.snGrad();
 	const scalarField magGradUw = mag(GradUw);
 	
+	const fvPatchVectorField& tppsiw = *this;
+	const scalarField magPsiw = mag(tppsiw.patchInternalField())*kr.boundaryField()[patchI];
+    const scalarField psiDV = magPsiw/magGradUw;
+	
 	tmp<vectorField> tpsw(new vectorField(Uw.size()));
 	vectorField& psw = tpsw();
+	
+	vector psiwout = vector(0,0,0);
 
     forAll(nutw, faceI)
     {
-        label faceCellI = patch().faceCells()[faceI];		
-		
-		// Roughness
-		scalar nuEff = nuw[faceI] + nutw[faceI];
-		scalar uTauSqrVisc = nuw[faceI]*magGradUw[faceI];
-		scalar kPlus = ks_*uTauSqrVisc/nuw[faceI];
+		scalar nuEffw = nuw[faceI]+nutw[faceI];
+		scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+		label faceCellI = patch().faceCells()[faceI];		
+			
+		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+		scalar kPlus = ks_*utauw/nuw[faceI];	
 		
 
 		if(pswType_ == "nut"){
-			if(kPlus < 5.0){
+			if(kPlus <= 5.5){
 				psw[faceI] = vector(0,0,0);
 			}else{	    
-				psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr[faceCellI] + SMALL);
+				psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+			}
+		}
+
+		if(pswType_ == "dev"){
+			if(kPlus<=5.5){
+				psw[faceI] = vector(0,0,0);
+			}else{	    
+				psw[faceI] = min(1.0,(kPlus-5.0)/90.0)*(epsr.boundaryField()[patchI][faceI]/sqr(kr.boundaryField()[patchI][faceI]))*(nuPsiw*vort[faceCellI])/(0.3*magVort[faceI]);
 			}
 		}
 		
 		if(pswType_ == "itime"){
-			if(kPlus < 5.0){
+			if(kPlus <= 5.5){
 				psw[faceI] = vector(0,0,0);
 			}else{	    
 				psw[faceI] = epsr[faceCellI]*vort[faceCellI]/(kr[faceCellI]*sqr(magGradUw[faceI]));
 			}
 		}
+		
+		psiwout = psw[faceI];
 		
                 //if(patch().name() == "FOIL_TOP"){
                 //   Pout << "Psw: " << psw[faceI]  << endl;
@@ -253,7 +270,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		//}
     }
 
-    //Info<< kr.boundaryField()[patchI] << endl;
+    //Info<< "Psi w: " << psiwout << endl;
 	
 	//if(patch().name() == "FOIL_TOP"){
 	//	Pout << "min nut W: " << min(nutw) << endl;

@@ -197,57 +197,61 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	//dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
 	//const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
 	
-	//const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	//const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
+	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	
+
 	
 	//const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
 	//const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
-		
+				
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
 	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
+	
+	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
+	const scalarField psiDV = magPsiw/magGradUw;	
     
-    //const scalar Cmu25 = pow(Cmu_, 0.25);
-	//const scalar Cmu12 = pow(Cmu_, 0.5);
 	
 	tmp<scalarField> tkw(new scalarField(nutw.size()));
 	scalarField& kw = tkw();
 	
 	scalar kpW = 0.0;
 	scalar kpP = 0.0;
+	scalar npW = 0.0;
     
     forAll(nutw, faceI)
     {
 		scalar nuEffw = nuw[faceI]+nutw[faceI];
+		scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+		
         label faceCellI = patch().faceCells()[faceI];		
-		scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
+		
+		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
 		
-		if(kPlus < 5.0){
+		if(kPlus <= 5.5){
 		
-			kw[faceI] = 1e-10;
+			kw[faceI] = 1e-15;
 		
 		}else{
 					
 			if(kType_ == "quad"){
-				kw[faceI] = min(1.0,pow(kPlus/90.0,2.0))*nuEffw*magGradUw[faceI]/0.3;
+				kw[faceI] = min(1.0,pow((kPlus-5.0)/90.0,2.0))*nuPsiw*magGradUw[faceI]/0.3;
 			}
 			else if(kType_ == "linear"){
-				kw[faceI] = min(1.0,kPlus/90.0)*nuEffw*magGradUw[faceI]/0.3;
-			}
-			else if(kType_ == "sqrt"){
-				kw[faceI] = min(1.0,pow(kPlus/90.0,0.5))*nuEffw*magGradUw[faceI]/0.3;
+				kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*nuPsiw*magGradUw[faceI]/0.3;
 			}
 			else{
-				kw[faceI] = min(1.0,kPlus/90.0)*nuEffw*magGradUw[faceI]/0.3;
-			}
-			
+				kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*nuPsiw*magGradUw[faceI]/0.3;
+			}			
 		}
 		
 		kpW = kw[faceI];
 		kpP = kPlus;
+		npW = nuPsiw;
 		
 		//Info << kw[faceI] << " | " << magGradUw[faceI] << " | " << nuEffw << " | " << kPlus << endl;
 		
@@ -257,7 +261,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//}
     }
 	
-	Info << "kw: " <<  kpW << " kPlus: " << kpP << endl;
+	//Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << endl;
 	
 	operator==(kw);
 

@@ -60,7 +60,7 @@ class nutLowReRoughWallTPFvPatchScalarField
         // Roughness model parameters
 
             //- Height
-            scalar roughnessHeight_;
+            scalar ks_;
 
             //- Constant
             scalar roughnessConstant_;
@@ -161,13 +161,13 @@ public:
             //- Return the roughness height
             const scalar& roughnessHeight() const
             {
-                return roughnessHeight_;
+                return ks_;
             }
 
             //- Return reference to the roughness height to allow adjustment
             scalar& roughnessHeight()
             {
-                return roughnessHeight_;
+                return ks_;
             }
 
 

@@ -74,11 +74,11 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	scalar T = 0.0;
 	scalar nW = 0.0;
 	scalar phW = 0.0;
-	scalar nutTmp = 0.0;
 
     forAll(kr.boundaryField()[patchI], faceI)
     {
 		label faceCellI = patch().faceCells()[faceI];
+		
 		if(nutExp_ == "default"){
 			
 		   if(tslimiter == "true"){
@@ -86,26 +86,25 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		   }
 		   
 		   if(tslimiter == "false"){
-				T = kr.boundaryField()[patchI][faceI]/(epsr.boundaryField()[patchI][faceI]+SMALL);
+				T = kr[faceCellI]/(epsr[faceCellI]+SMALL);
 		   }           
 		   
-		   nutTmp = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
-		   nutTmp = min(nutw[faceI],nRMax*nuw[faceI]);
+		   nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
 		
 		if(nutExp_ == "ksquared"){
-           nutTmp = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
+           nutw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
 		}
 		
 		if(nutExp_ == "sdiv"){
-		   nutTmp = epsr.boundaryField()[patchI][faceI]/sqr(magGradUw[faceI]);
+		   nutw[faceI] = epsr.boundaryField()[patchI][faceI]/sqr(magGradUw[faceI]);
 		}
 		
 		if(nutExp_ == "psi"){
-		   nutTmp = mag(tpsr.boundaryField()[patchI][faceI])*kr.boundaryField()[patchI][faceI]/magGradUw[faceI];
+		   nutw[faceI] = mag(tpsr.boundaryField()[patchI][faceI])*kr.boundaryField()[patchI][faceI]/magGradUw[faceI];
 		}
-		
-		nutw[faceI] = nutTmp;
+	
 		
         //nutw[faceI] = 1e-10;
         nW = nutw[faceI];
@@ -113,7 +112,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		
     }
 	
-	Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
+	//Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
 
 	return tnutw;
 }
@@ -131,7 +130,7 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(p, iF),
-    roughnessHeight_(pTraits<scalar>::zero),
+    ks_(pTraits<scalar>::zero),
     roughnessConstant_(pTraits<scalar>::zero),
     roughnessFudgeFactor_(pTraits<scalar>::zero),
 	nutExp_("default")
@@ -148,7 +147,7 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(ptf, p, iF, mapper),
-    roughnessHeight_(ptf.roughnessHeight_),
+    ks_(ptf.ks_),
     roughnessConstant_(ptf.roughnessConstant_),
     roughnessFudgeFactor_(ptf.roughnessFudgeFactor_),
 	nutExp_(ptf.nutExp_)
@@ -164,7 +163,7 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(p, iF, dict),
-    roughnessHeight_(dict.lookupOrDefault<scalar>("roughnessHeight",0.0)),
+    ks_(dict.lookupOrDefault<scalar>("ks",0.0)),
     roughnessConstant_(dict.lookupOrDefault<scalar>("roughnessConstant",0.0)),
     roughnessFudgeFactor_(dict.lookupOrDefault<scalar>("roughnessFudgeFactor",0.0)),
 	nutExp_(dict.lookupOrDefault<word>("nutExp","default"))
@@ -178,7 +177,7 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(rwfpsf),
-    roughnessHeight_(rwfpsf.roughnessHeight_),
+    ks_(rwfpsf.ks_),
     roughnessConstant_(rwfpsf.roughnessConstant_),
     roughnessFudgeFactor_(rwfpsf.roughnessFudgeFactor_),
 	nutExp_(rwfpsf.nutExp_)
@@ -193,7 +192,7 @@ nutLowReRoughWallTPFvPatchScalarField
 )
 :
     nutWallFunctionFvPatchScalarField(rwfpsf, iF),
-    roughnessHeight_(rwfpsf.roughnessHeight_),
+    ks_(rwfpsf.ks_),
     roughnessConstant_(rwfpsf.roughnessConstant_),
     roughnessFudgeFactor_(rwfpsf.roughnessFudgeFactor_),
 	nutExp_(rwfpsf.nutExp_)
@@ -210,8 +209,8 @@ void nutLowReRoughWallTPFvPatchScalarField::write
 {
     fvPatchField<scalar>::write(os);
     writeLocalEntries(os);
-    os.writeKeyword("roughnessHeight")
-        << roughnessHeight_ << token::END_STATEMENT << nl;
+    os.writeKeyword("ks")
+        << ks_ << token::END_STATEMENT << nl;
     os.writeKeyword("roughnessConstant")
         << roughnessConstant_ << token::END_STATEMENT << nl;
     os.writeKeyword("roughnessFudgeFactor")
