@@ -234,7 +234,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		if(kPlus <= 5.5){
 		
-			kw[faceI] = 1e-15;
+			kw[faceI] = 1e-10;
 		
 		}else{
 					

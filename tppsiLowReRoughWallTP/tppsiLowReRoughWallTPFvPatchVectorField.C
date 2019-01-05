@@ -259,6 +259,14 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 			}
 		}
 		
+		if(pswType_ == "zero"){
+			if(kPlus <= 5.5){
+				psw[faceI] = vector(0,0,0);
+			}else{	    
+				psw[faceI] = vector(0,0,0);
+			}
+		}
+		
 		psiwout = psw[faceI];
 		
                 //if(patch().name() == "FOIL_TOP"){
@@ -270,7 +278,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		//}
     }
 
-    //Info<< "Psi w: " << psiwout << endl;
+    Info<< "Psi w: " << psiwout << endl;
 	
 	//if(patch().name() == "FOIL_TOP"){
 	//	Pout << "min nut W: " << min(nutw) << endl;
