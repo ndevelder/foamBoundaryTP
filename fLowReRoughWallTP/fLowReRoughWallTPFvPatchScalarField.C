@@ -78,7 +78,8 @@ void fLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
-	os.writeKeyword("grex") << ks_ << token::END_STATEMENT << nl;
+	os.writeKeyword("grex") << grex_ << token::END_STATEMENT << nl;
+	os.writeKeyword("fwtype") << fwtype_ << token::END_STATEMENT << nl;
 }
 
 
@@ -96,6 +97,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     E_(9.8),
 	ks_(0.0),
 	grex_(1.0),
+	fwtype_("smooth"),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -116,6 +118,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     E_(ptf.E_),
 	ks_(ptf.ks_),
 	grex_(ptf.grex_),
+	fwtype_(ptf.fwtype_),
     yPlusLam_(ptf.yPlusLam_)
 {
     checkType();
@@ -135,6 +138,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
 	grex_(dict.lookupOrDefault<scalar>("grex", 1.0)),
+	fwtype_(dict.lookupOrDefault<word>("fwtype", "smooth")),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
     checkType();
@@ -152,6 +156,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	grex_(wfpsf.grex_),
+	fwtype_(wfpsf.fwtype_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -170,6 +175,7 @@ fLowReRoughWallTPFvPatchScalarField::fLowReRoughWallTPFvPatchScalarField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	grex_(wfpsf.grex_),
+	fwtype_(wfpsf.fwtype_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
     checkType();
@@ -193,12 +199,12 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
-	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
-	const volScalarField& tppr = mesh.lookupObject<volScalarField>("tpProd");
-	const volVectorField& tps = mesh.lookupObject<volVectorField>("tppsi");
-	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
+	const volScalarField& kr = db().lookupObject<volScalarField>("k");
+	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+	const volScalarField& epsr = db().lookupObject<volScalarField>("epsilon");
+	const volScalarField& tppr = db().lookupObject<volScalarField>("tpProd");
+	const volVectorField& tps = db().lookupObject<volVectorField>("tppsi");
+	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI].patchInternalField());
 		
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
@@ -207,13 +213,13 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
 	
-	const volScalarField& tprSqrt = mesh.lookupObject<volScalarField>("tpphiSqrt");
+	const volScalarField& tprSqrt = db().lookupObject<volScalarField>("tpphiSqrt");
 	const scalarField TpSqrt = tprSqrt.boundaryField()[patchI].snGrad();
 	const scalarField magSqrGradTpSqrt = magSqr(TpSqrt);
 	
-	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
 	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
-	const scalarField psiDV = magPsiw/magGradUw;
+	const scalarField psiDV = magPsiw/(magGradUw + SMALL);
 
 	
 	tmp<scalarField> tfw(new scalarField(nutw.size()));
@@ -235,6 +241,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         label faceCellI = patch().faceCells()[faceI];		
 		
 		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+		scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
 		
 		
@@ -268,11 +275,21 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//   fw[faceI] = pkgMult*tpr[faceCellI];
        //    fwt = 2;		   
 		//}
-		
-		if(kPlus <= 5.5){
-			fw[faceI] = 0.0;			
-		}else{
-			fw[faceI] = Cf_*(min(pow((kPlus-5.0)/90.0,grex_),1.0))*iTime*tpr.boundaryField()[patchI][faceI];
+		if(fwtype_ == "smoothzero"){
+			fw[faceI] = 0.0;	 		
+		}
+
+		if(fwtype_ == "smooth"){
+			fw[faceI] = -iTime*tpr.boundaryField()[patchI][faceI];			
+		}
+
+		if(fwtype_ == "rough"){
+			if(kPlus <= 5.5){
+				fw[faceI] = -iTime*tpr.boundaryField()[patchI][faceI];			
+			}else{
+				//fw[faceI] = Cf_*tppr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI];
+				fw[faceI] = (-1.0 + Cf_*(min(pow((kPlus-5.0)/90.0,grex_),1.0)))*iTime*tpr.boundaryField()[patchI][faceI];
+			}
 		}
 		
 		//fw[faceI] = ysMult*tpr[faceCellI];
@@ -297,7 +314,7 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     }
 	
 
-	//Info << "fw: " << tF << " epskphik: " << pF << " kPlus: " << kP << " pod: " << pD << endl;
+	Info << "fw: " << tF << " epskphik: " << pF << " kPlus: " << kP << " pod: " << pD << endl;
 	
 	operator==(fw);
 

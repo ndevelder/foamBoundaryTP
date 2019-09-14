@@ -199,10 +199,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
+	const volScalarField& kr = db().lookupObject<volScalarField>("k");
+	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
 	
-	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
+	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
 	const scalarField magVort = mag(vort.boundaryField()[patchI]);
 
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");	
@@ -211,9 +211,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
 
-	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
-	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
-	const scalarField psiDV = magPsiw/magGradUw;
+	const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiSqrw = (tppsiw.boundaryField()[patchI] & tppsiw.boundaryField()[patchI])*sqr(kr.boundaryField()[patchI]);
+	const scalarField magPsiw = sqrt(magPsiSqrw + SMALL);
+	const scalarField psiDV = magPsiw/(magGradUw + SMALL);
 	
     
     tmp<scalarField> tphw(new scalarField(nutw.size()));
@@ -223,6 +224,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	scalarField& kPlus = tkplus();
 	
 	scalar pkF = SMALL;
+	scalar pkout = SMALL;
 
     forAll(nutw, faceI)
     {
@@ -231,8 +233,13 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
         label faceCellI = patch().faceCells()[faceI];		
 		
-		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+		//scalar utauw = pow(magPsiSqrw[faceI] + SMALL, 0.25);
+		scalar utauw = sqrt(nuPsiw*magGradUw[faceI] + SMALL);
+		scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
+        scalar kP = ks_*utauw/nuw[faceI];
+        scalar dzero = 0.03*ks_*min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
+
 		
 		if(rType_ == "channel") {
 			
@@ -275,10 +282,34 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			if(kPlus<=5.5){
 			  pkF = 1e-10;
 			}else if(kPlus<=90.0){
+			  pkF = pkC_*pow(min(1.0,(kPlus-5.0)/90.0),0.04);
+			}else{
+			  pkF = pkC_;
+			}
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "sqrtpow"){
+			
+			if(kPlus<=5.5){
+			  pkF = 1e-10;
+			}else if(kPlus<=90.0){
 			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.04);
 			}else{
 			  pkF = pkC_;
 			}
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "tanh"){
+			
+			if(kPlus<=5.5){
+			  pkF = 1e-10;
+			}else if(kPlus<=90.0){
+			  pkF = pkC_*((0.04*kPlus/90.0) + (tanh((kPlus-5.5)/5.0)));
+			}else{
+			  pkF = pkC_;
+			} 
 			
 			phw[faceI] = pkF;
 			
@@ -313,9 +344,16 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}
     
 		//if(patch().name() == "WALL_TOP"){
-		//	Pout << "tpphi/k W: " << phw[faceI] << endl;
+		//	Pout << "kPlus: " << kP << endl;
+		//	Pout << "ks: " << ks_ << endl;
+		//	Pout << "utauw: " << utauw << endl;
+		//	Pout << "dzero: " << dzero << endl;
 		//}
+
+		pkout = phw[faceI];
 	}
+
+	//Pout<< "Phi/k w: " << pkout << endl;
 	
 	operator==(tphw);
  

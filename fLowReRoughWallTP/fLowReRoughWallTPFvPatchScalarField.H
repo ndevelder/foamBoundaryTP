@@ -74,6 +74,9 @@ protected:
 		
 		//- Growth exponent rough to smooth
 		scalar grex_;
+
+        // Choose smooth,smoothzero,rough
+        word fwtype_;
 		
 
         //- Y+ at the edge of the laminar sublayer

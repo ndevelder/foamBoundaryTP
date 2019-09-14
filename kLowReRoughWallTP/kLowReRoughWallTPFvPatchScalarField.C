@@ -197,7 +197,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	//dictionary tpCoeffDict(rasDictionary.subDict("turbulentPotentialCoeffs"));
 	//const scalar& sigmaKr = readScalar(tpCoeffDict.lookup("sigmaKInit")) ;
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
+	const volScalarField& kr = db().lookupObject<volScalarField>("k");
 	
 
 	
@@ -208,11 +208,12 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
-	const scalarField magGradUw = mag(Uw.snGrad());
+    const vectorField GradUw = Uw.snGrad();
+    const scalarField magGradUw = mag(GradUw);
 	
-	const volVectorField& tppsiw = mesh.lookupObject<volVectorField>("tppsi");
+	const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
 	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
-	const scalarField psiDV = magPsiw/magGradUw;	
+	const scalarField psiDV = magPsiw/(magGradUw + SMALL);	
     
 	
 	tmp<scalarField> tkw(new scalarField(nutw.size()));
@@ -221,6 +222,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	scalar kpW = 0.0;
 	scalar kpP = 0.0;
 	scalar npW = 0.0;
+    scalar du = 0.0;
     
     forAll(nutw, faceI)
     {
@@ -230,6 +232,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         label faceCellI = patch().faceCells()[faceI];		
 		
 		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+        scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
 		
 		if(kPlus <= 5.5){
@@ -252,7 +255,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		kpW = kw[faceI];
 		kpP = kPlus;
 		npW = nuPsiw;
-		
+		du = magGradUw[faceI];
 		//Info << kw[faceI] << " | " << magGradUw[faceI] << " | " << nuEffw << " | " << kPlus << endl;
 		
 		//if(patch().name() == "FOIL_LEAD"){
@@ -261,7 +264,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//}
     }
 	
-	//Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << endl;
+	Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << " mdu: " << du  << endl;
 	
 	operator==(kw);
 

@@ -57,37 +57,53 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 	scalar nRMax = readScalar(bCoeffDict.lookup("nutRatMax"));
 	scalar cMuBc = readScalar(bCoeffDict.lookup("cMu"));
 	
-	const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
-	const volScalarField& epsHr = mesh.lookupObject<volScalarField>("epsHat");
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
-    const volVectorField& tpsr = mesh.lookupObject<volVectorField>("tppsi");
+	const volScalarField& kr = db().lookupObject<volScalarField>("k");
+    const volScalarField& ksr = db().lookupObject<volScalarField>("kSqrt");
+	const volScalarField& epsr = db().lookupObject<volScalarField>("epsilon");
+	const volScalarField& epsh = db().lookupObject<volScalarField>("epsHat");
+	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+    const volVectorField& tpsr = db().lookupObject<volVectorField>("tppsi");
+    const volScalarField& lam = db().lookupObject<volScalarField>("lambda");
 	
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");	
 	
 	const fvPatchVectorField& Uw = rasModel.U().boundaryField()[patchI];
 	const scalarField magGradUw = mag(Uw.snGrad());
+
+    const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
+    const scalarField magPsiSqrw = (tppsiw.boundaryField()[patchI] & tppsiw.boundaryField()[patchI])*sqr(kr.boundaryField()[patchI]);
+    const scalarField magPsiw = sqrt(magPsiSqrw + SMALL);
+    const scalarField psiDV = magPsiw/(magGradUw + SMALL);
     
 	tmp<scalarField> tnutw(new scalarField(patch().size(), 0.0));
 	scalarField& nutw = tnutw();
 	
 	scalar T = 0.0;
+    scalar minT = 0.0;
+    scalar pSqr = 0.0;
 	scalar nW = 0.0;
 	scalar phW = 0.0;
 
     forAll(kr.boundaryField()[patchI], faceI)
     {
 		label faceCellI = patch().faceCells()[faceI];
+        scalar nuEffw = nuw[faceI]+nutw[faceI];
+        scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+
+        scalar utauw = sqrt(nuPsiw*magGradUw[faceI] + SMALL);
+        scalar kPlus = ks_*utauw/nuw[faceI];
 		
 		if(nutExp_ == "default"){			
-		   T = kr[faceCellI]/(epsr[faceCellI]+SMALL);
+           minT = 6.0*sqrt(nuw[faceI]/epsr[faceCellI]);
+		   T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL),minT);
 		   nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
 		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
-		
-		if(nutExp_ == "ksquared"){
-           nutw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsr[faceCellI]+SMALL);
-		}
+
+        if(nutExp_ == "lam"){
+           pSqr = tpsr.boundaryField()[patchI][faceI] & tpsr.boundaryField()[patchI][faceI];
+           nutw[faceI] = (0.6*(0.12 + 0.37*lam.boundaryField()[patchI][faceI]) + 0.4*pSqr)*kr.boundaryField()[patchI][faceI]*kr[faceCellI]/(epsh[faceCellI]+SMALL);
+        }
 		
 		if(nutExp_ == "sdiv"){
 		   nutw[faceI] = epsr.boundaryField()[patchI][faceI]/sqr(magGradUw[faceI]);
@@ -96,6 +112,15 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		if(nutExp_ == "psi"){
 		   nutw[faceI] = mag(tpsr.boundaryField()[patchI][faceI])*kr.boundaryField()[patchI][faceI]/magGradUw[faceI];
 		}
+
+        if(nutExp_ == "ks"){
+           nutw[faceI] = pow(0.09,0.25)*ksr.boundaryField()[patchI][faceI]*0.41*0.03*ks_*min(1.0, kPlus/90.0);
+        }
+
+        if(nutExp_ == "kss"){
+           nutw[faceI] = pow(0.09,0.25)*ksr.boundaryField()[patchI][faceI]*0.41*0.03*ks_*pow(min(1.0, kPlus/90.0),2.0);
+        }
+    
 	
 		
         //nutw[faceI] = 1e-10;
@@ -104,7 +129,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		
     }
 	
-	//Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
+	Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
 
 	return tnutw;
 }

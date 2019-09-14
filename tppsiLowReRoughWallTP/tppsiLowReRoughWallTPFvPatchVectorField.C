@@ -193,31 +193,46 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 
 	// Get patch indices
     const label patchI = patch().index();
-	
 	const fvMesh& mesh = patch().boundaryMesh().mesh();
+
+    // Get patch normal vector
+    const fvBoundaryMesh& boundary = mesh.boundary();
+    vectorField nf = boundary[patchI].nf();
 	
     
 	// Load Turbulence Model object
     const RASModel& rasModel = db().lookupObject<RASModel>("RASProperties");	
     const scalarField& y = rasModel.y()[patchI];
 	
-    const volScalarField& kr = mesh.lookupObject<volScalarField>("k");
-	const volScalarField& tpr = mesh.lookupObject<volScalarField>("tpphi");
-	const volScalarField& epsr = mesh.lookupObject<volScalarField>("epsilon");
+    const volScalarField& kr = db().lookupObject<volScalarField>("k");
+	const volScalarField& tpr = db().lookupObject<volScalarField>("tpphi");
+	const volScalarField& epsr = db().lookupObject<volScalarField>("epsilon");
 	
-	const volVectorField& vort = mesh.lookupObject<volVectorField>("vorticity");
-	const scalarField magVort = mag(vort.boundaryField()[patchI]);
-	
+	const volVectorField& vort = db().lookupObject<volVectorField>("vorticity");
+    const scalarField magVort = mag(vort.boundaryField()[patchI]);
+    const vectorField unitVort = vort.boundaryField()[patchI]/magVort;
+
+    //const volVectorField& uField = mesh.lookupObject<volVectorField>("U");
+    //const surfaceTensorField du = fvc::interpolate(fvc::grad(uField));
+    //tensorField dui = du.boundaryField()[patchI];
+    //const vectorField GradUw = dui & nf;
+	//const scalarField magGradUw = magVort;
+
 	const fvPatchScalarField& nuw = lookupPatchField<volScalarField, scalar>("nu");
 	const fvPatchScalarField& nutw = lookupPatchField<volScalarField, scalar>("nut");
 	
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const vectorField GradUw = Uw.snGrad();
-	const scalarField magGradUw = mag(GradUw);
+    const scalarField magGradUw = mag(GradUw);
 	
-	const fvPatchVectorField& tppsiw = *this;
-	const scalarField magPsiw = mag(tppsiw.patchInternalField())*kr.boundaryField()[patchI];
-    const scalarField psiDV = magPsiw/magGradUw;
+
+    const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
+	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI]*kr.boundaryField()[patchI]);
+    const scalarField psiDV = magPsiw/(magGradUw + SMALL);
+
+    //const fvPatchVectorField& tppsiw = *this;
+	//const scalarField magPsiw = mag(tppsiw.patchInternalField()*kr.boundaryField()[patchI]);
+    //const scalarField psiDV = magPsiw/(magGradUw + SMALL);
 	
 	tmp<vectorField> tpsw(new vectorField(Uw.size()));
 	vectorField& psw = tpsw();
@@ -232,6 +247,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		label faceCellI = patch().faceCells()[faceI];		
 			
 		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+        
 		scalar kPlus = ks_*utauw/nuw[faceI];	
 		
 
@@ -242,6 +258,30 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 				psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
 			}
 		}
+
+        if(pswType_ == "nutf"){
+            if(kPlus <= 5.5){
+                psw[faceI] = vector(0,0,0);
+            }else{      
+                psw[faceI] = cr_*nutw[faceI]*vort[faceCellI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+            }
+        }
+
+        if(pswType_ == "nutm"){
+            if(kPlus <= 5.5){
+                psw[faceI] = vector(0,0,0);
+            }else{      
+                psw[faceI] = cr_*0.09*(kr.boundaryField()[patchI][faceI]/epsr.boundaryField()[patchI][faceI] + SMALL)*vort.boundaryField()[patchI][faceI];
+            }
+        }
+		
+		if(pswType_ == "nutplus"){
+			if(kPlus <= 5.5){
+				psw[faceI] = vector(0,0,0);
+			}else{	    
+				psw[faceI] = (1.0 + cr_*(pow(1.0/kPlus, 0.333)))*(0.21*tpr.boundaryField()[patchI][faceI]*(kr.boundaryField()[patchI][faceI])/epsr.boundaryField()[patchI][faceI])*vort.boundaryField()[patchI][faceI];
+			}
+		}  
 
 		if(pswType_ == "dev"){
 			if(kPlus<=5.5){
@@ -266,11 +306,27 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 				psw[faceI] = vector(0,0,0);
 			}
 		}
+
+        if(pswType_ == "uts"){
+            if(kPlus <= 5.5){
+                psw[faceI] = vector(0,0,0);
+            }else{      
+                psw[faceI] = cr_*nuEffw*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+            }
+        }
+
+        if(pswType_ == "con"){
+            if(kPlus <= 5.5){
+                psw[faceI] = vector(0,0,0);
+            }else{      
+                psw[faceI] = (1.0 + cr_)*0.3*min(1.0,sqr(kPlus/90.0))*unitVort[faceI];
+            }  
+        }
 		
 		psiwout = psw[faceI];
 		
                 //if(patch().name() == "FOIL_TOP"){
-                //   Pout << "Psw: " << psw[faceI]  << endl;
+        //Pout << "Psw: " << psw[faceI]  << endl;
                 //}
 
 		//if(patch().name() == "FOIL_TOP"){
@@ -278,7 +334,13 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 		//}
     }
 
-    Info<< "Psi w: " << psiwout << endl;
+    //Pout<< "Psi w: " << psw << endl;
+    //Pout<< "magVort w: " << magVort << endl;
+    //Pout<< "Ugrad Mag w: " << magGradUw << endl;
+    //Pout<< "nf w: " << nf << endl;
+
+    Info<< "Tppsi w: " << psiwout << endl;
+
 	
 	//if(patch().name() == "FOIL_TOP"){
 	//	Pout << "min nut W: " << min(nutw) << endl;
