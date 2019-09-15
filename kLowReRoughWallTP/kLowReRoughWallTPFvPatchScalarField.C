@@ -264,7 +264,7 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//}
     }
 	
-	Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << " mdu: " << du  << endl;
+	//Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << " mdu: " << du  << endl;
 	
 	operator==(kw);
 

@@ -129,7 +129,7 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 		
     }
 	
-	Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
+	//Info << "nutw: " << nW << " | nutT: " << T << " | phW: " << phW << endl;
 
 	return tnutw;
 }

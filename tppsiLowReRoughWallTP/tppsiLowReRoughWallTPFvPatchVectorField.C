@@ -339,7 +339,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
     //Pout<< "Ugrad Mag w: " << magGradUw << endl;
     //Pout<< "nf w: " << nf << endl;
 
-    Info<< "Tppsi w: " << psiwout << endl;
+    //Info<< "Tppsi w: " << psiwout << endl;
 
 	
 	//if(patch().name() == "FOIL_TOP"){

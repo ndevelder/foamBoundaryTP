@@ -236,74 +236,19 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	scalar epWS = 0.0;
 	scalar epWR = 0.0;
 	scalar kpout = 0.0;
-	
-	if(epsType_ == "rough"){
-
-		const scalar cB = 0.05;
-		const scalar sM = 0.0025;
-		const scalar cUp = 0.5;
-
-    // Started with cUp = 0.26  
-		   
-		forAll(nutw, faceI)
-		{
-			label faceCellI = patch().faceCells()[faceI];		
-			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/(nuw[faceI]);
-			
-			// Use epsilon constant region formula
-			if(kPlus<=5.0){
-				epsC = cUp;
-			}else if(kPlus>5.0 && kPlus<=50.0){
-				epsC = (cB+sM) + ((cUp-(cB+sM))/(0.73))*pow((1.0-kPlus/50.0),3.0);
-			}else if(kPlus>50.0 && kPlus<=100.0){
-				epsC = (cB+sM) - (sM/50.0)*(kPlus-50.0);
-			}else{
-				epsC = cB;
-			}
-			
-			epsw[faceI] = epsC*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
-		}
-	}
-	
-	if(epsType_ == "roughtwo"){
-
-		const scalar cB = 0.05;
-		const scalar sM = 0.0025;
-		const scalar cUp = 0.26;
-
-    // Started with cUp = 0.26  
-		
-		forAll(nutw, faceI)
-		{
-			label faceCellI = patch().faceCells()[faceI];		
-			scalar utauw = sqrt(nuw[faceI]*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/(nuw[faceI]);
-			
-			// Use epsilon constant region formula
-			if(kPlus<=5.0){
-				epsC = cUp;
-			}else if(kPlus>5.0 && kPlus<=90.0){
-				epsC = cUp + (kPlus/270.0);
-			}else{
-				epsC = 0.6;
-			}
-			
-			epsw[faceI] = epsC*pow((nuw[faceI]+nutw[faceI])*magGradUw[faceI],2.0)/(nuw[faceI]);
-		}
-	}
+	scalar pdeout = 0.0;
 	
 	
 	if(epsType_ == "hellsten"){  
 
-        Info << "Using Hellsten Epsilon BC" << endl;
+        //Info << "Using Hellsten Epsilon BC" << endl;
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
-			label faceCellI = patch().faceCells()[faceI];		
+			//label faceCellI = patch().faceCells()[faceI];		
 			
 			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];	
@@ -314,10 +259,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			}else if(kPlus>5.0 && kPlus<=25.0){
 				epsC = pow(50.0/kPlus,2.0);
-				epsw[faceI] = kr.boundaryField()[patchI][faceI]*epsC*((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(nuw[faceI]+nutw[faceI]);
+				epsw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*epsC*(nuPsiw*magGradUw[faceI])/(nuw[faceI]);
 			}else{
 				epsC = max(100.0/kPlus,1.0);
-				epsw[faceI] = kr.boundaryField()[patchI][faceI]*epsC*((nuw[faceI]+nutw[faceI])*magGradUw[faceI])/(nuw[faceI]+nutw[faceI]);
+				epsw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*epsC*(nuPsiw*magGradUw[faceI])/(nuw[faceI]);
 			}
 			
 			//Info << epsw[faceI] << "--" << kr.boundaryField()[patchI][faceI]<< "--"  << epsC << "--" << ((nuw[faceI]+nutw[faceI])*magGradUw[faceI]) << endl;			
@@ -325,88 +270,15 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	}
 	
 	
-	if(epsType_ == "knopp"){
 
-		Info << "Using Knopp Epsilon BC" << endl;
+	if(epsType_ == "knoppthree" || epsType_ == "knopp" || epsType_ == "rough"){
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
-			label faceCellI = patch().faceCells()[faceI];		
-			
-			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/nuw[faceI];	
-			
-			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25))/min(1,kPlus/90.0);
-			scalar dz = dzm*0.03*ks_;
-			
-			// Use epsilon constant region formula
-			if(kPlus<=5.0){
-				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-			}else{
-				epsw[faceI] = (pow(nuPsiw*magGradUw[faceI], 1.5))/(0.09*0.41*(0.5*ks_ + dz));
-				//epsw[faceI] = min(epsw[faceI],6.0*nuw[faceI]/(0.09*sqr(y[faceI])));
-			}
-			
-			
-			epW = epsw[faceI];
-			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-			
-		}
-		
-		Info << "epw: " << epW << " epwS: " << epWS << endl;
-	}
-	
-	scalar pdeout = 0.0;
-
-
-	if(epsType_ == "knopptwo"){
-
-		Info << "Using Knopp Two Epsilon BC" << endl;
-		
-		forAll(nutw, faceI)
-		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
-			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
-			
-			label faceCellI = patch().faceCells()[faceI];		
-			
-			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
-			scalar kPlus = ks_*utauw/nuw[faceI];	
-			
-			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
-			scalar dz = dzm*0.03*ks_;
-			
-			// Use epsilon constant region formula
-			if(kPlus<=5.0){
-				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-			}else{
-				epsw[faceI] = (min(1,kPlus/90.0))*(0.7 + 0.3*pde[faceI])*(pow(nuPsiw*magGradUw[faceI], 1.5))/(0.41*dz);
-			}
-
-			
-			pdeout = pde[faceI];
-			epW = epsw[faceI];
-			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-			
-		}
-		
-		Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout <<endl;
-	}
-
-
-	if(epsType_ == "knoppthree"){
-
-		//Info << "Using Knopp Three Epsilon BC" << endl;
-		
-		forAll(nutw, faceI)
-		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
-			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
-			
-			label faceCellI = patch().faceCells()[faceI];		
+			//label faceCellI = patch().faceCells()[faceI];		
 			
 			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];	
@@ -414,21 +286,15 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
 			scalar dz = dzm*0.03*ks_;
 
-
-			//Info << "dz: " << dz << endl;
 			
 			// Use epsilon constant region formula
 			if(kPlus<=5.0){
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-				//Info << "epsw smooth" <<endl;
 			}else{
 				epsw[faceI] = pow(min(1,kPlus/90.0),1.5)*0.3*pow((nuw[faceI]+psiDV[faceI])*magGradUw[faceI],1.5)/(0.41*dz + SMALL);
 				//epsw[faceI] = 0.0493*pow(kr[faceCellI],1.5)/(0.41*dz + SMALL);
-
-				//Info << "epsw rough" <<endl;
 			}
 
-			
 			pdeout = pde[faceI];
 			epW = epsw[faceI];
 			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
@@ -436,14 +302,15 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 		}
 		
-		Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
+		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
 	}
+
 
 	if(epsType_ == "smooth"){
 		
 		forAll(nutw, faceI)
 		{
-			label faceCellI = patch().faceCells()[faceI];
+			//label faceCellI = patch().faceCells()[faceI];
 		
 			epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 		}
@@ -467,10 +334,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
-			label faceCellI = patch().faceCells()[faceI];		
+			//label faceCellI = patch().faceCells()[faceI];		
 			
 			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];		
@@ -506,10 +373,10 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
-			label faceCellI = patch().faceCells()[faceI];		
+			//label faceCellI = patch().faceCells()[faceI];		
 			
 			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];			
@@ -538,7 +405,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
 			label faceCellI = patch().faceCells()[faceI];		
@@ -573,36 +440,36 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 
 	if(epsType_ == "psi5"){
 			
-			forAll(nutw, faceI)
-			{
-				scalar nuEffw = nuw[faceI]+nutw[faceI];
-				scalar nuPsiw = nuw[faceI]+psiDV[faceI];
-				
-				label faceCellI = patch().faceCells()[faceI];		
-				
-				scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
-				scalar kPlus = ks_*utauw/nuw[faceI];
-				
-				scalar epsMult = magPsiw[faceI]/nuPsiw + 0.23*bk25*ksr.boundaryField()[patchI][faceI]*pow(min(25.0/kPlus,1.0),2.0)/nuw[faceI];
-				
-				if(kPlus<=5.5){
-					epsw[faceI] = 2.0*nuw[faceI]*kr[faceCellI]/sqr(y[faceI]);
-				}else{
-					epsw[faceI] = epsMult*bk25*ksr.boundaryField()[patchI][faceI];
-				}
-				
-				epW = epsw[faceI];
-				epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
-				epWR = epsMult*nuPsiw*magGradUw[faceI];
-				eMp = magPsiw[faceI];
-				eMu = 0.23*nuPsiw*magGradUw[faceI]*pow(min(25.0/kPlus,1.0),2.0);
-				kw = kr.boundaryField()[patchI][faceI];
-				ksw = ksr.boundaryField()[patchI][faceI];
-				
+		forAll(nutw, faceI)
+		{
+			//scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];
+			
+			scalar epsMult = magPsiw[faceI]/nuPsiw + 0.23*bk25*ksr.boundaryField()[patchI][faceI]*pow(min(25.0/kPlus,1.0),2.0)/nuw[faceI];
+			
+			if(kPlus<=5.5){
+				epsw[faceI] = 2.0*nuw[faceI]*kr[faceCellI]/sqr(y[faceI]);
+			}else{
+				epsw[faceI] = epsMult*bk25*ksr.boundaryField()[patchI][faceI];
 			}
 			
-			Info << "epw: " << epW << " epwS: " << epWS << " kw: " << kw<< " magpsiw: " << eMp << " ksqrtw: " << ksw << endl;
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epWR = epsMult*nuPsiw*magGradUw[faceI];
+			eMp = magPsiw[faceI];
+			eMu = 0.23*nuPsiw*magGradUw[faceI]*pow(min(25.0/kPlus,1.0),2.0);
+			kw = kr.boundaryField()[patchI][faceI];
+			ksw = ksr.boundaryField()[patchI][faceI];
+			
 		}
+		
+		Info << "epw: " << epW << " epwS: " << epWS << " kw: " << kw<< " magpsiw: " << eMp << " ksqrtw: " << ksw << endl;
+	}
 		  
 
 
