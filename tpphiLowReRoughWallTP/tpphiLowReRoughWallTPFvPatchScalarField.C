@@ -294,7 +294,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			if(kPlus<=5.5){
 			  pkF = 1e-10;
 			}else if(kPlus<=90.0){
-			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.04);
+			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.02);
 			}else{
 			  pkF = pkC_;
 			}
