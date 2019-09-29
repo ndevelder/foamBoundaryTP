@@ -79,6 +79,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) con
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
 	os.writeKeyword("pkC") << pkC_ << token::END_STATEMENT << nl;
+	os.writeKeyword("bz") << bz_ << token::END_STATEMENT << nl;
 	os.writeKeyword("rType") << rType_ << token::END_STATEMENT << nl;
 }
 
@@ -97,6 +98,7 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     E_(9.8),
 	ks_(1e-10),
 	pkC_(0.1455),
+	bz_(0),
     yPlusLam_(calcYPlusLam(kappa_, E_)),
 	rType_("calculated")
 {
@@ -118,6 +120,7 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     E_(ptf.E_),
 	ks_(ptf.ks_),
 	pkC_(ptf.pkC_),
+	bz_(ptf.bz_),
     yPlusLam_(ptf.yPlusLam_),
 	rType_(ptf.rType_)
 {
@@ -137,7 +140,8 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 1e-10)),
-	pkC_(dict.lookupOrDefault<scalar>("pkC", 0.1455)),
+	pkC_(dict.lookupOrDefault<scalar>("pkC", 0.1333)),
+	bz_(dict.lookupOrDefault<label>("bz", 0)),
     yPlusLam_(calcYPlusLam(kappa_, E_)),
 	rType_(dict.lookupOrDefault<word>("rType","calculated"))
 {
@@ -156,6 +160,7 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	pkC_(wfpsf.pkC_),
+	bz_(wfpsf.bz_),
     yPlusLam_(wfpsf.yPlusLam_),
 	rType_(wfpsf.rType_)
 {
@@ -175,6 +180,7 @@ tpphiLowReRoughWallTPFvPatchScalarField::tpphiLowReRoughWallTPFvPatchScalarField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	pkC_(wfpsf.pkC_),
+	bz_(wfpsf.bz_),
     yPlusLam_(wfpsf.yPlusLam_),
 	rType_(wfpsf.rType_)
 {
@@ -240,6 +246,18 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         scalar kP = ks_*utauw/nuw[faceI];
         scalar dzero = 0.03*ks_*min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
 
+
+        label psize = nutw.size();
+
+		if(faceI < bz_){
+			kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+		}
+
+		if(faceI > ((psize-1)-bz_)){
+			kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+		}
+		
+
 		
 		if(rType_ == "channel") {
 			
@@ -292,7 +310,7 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		}else if(rType_ == "sqrtpow"){
 			
 			if(kPlus<=5.5){
-			  pkF = 1e-10;
+			  pkF = 1e-5;
 			}else if(kPlus<=90.0){
 			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.02);
 			}else{

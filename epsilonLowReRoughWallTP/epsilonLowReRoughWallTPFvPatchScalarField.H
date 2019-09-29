@@ -85,6 +85,8 @@ class epsilonLowReRoughWallTPFvPatchScalarField
 		scalar ks_;
 		
 		scalar sr_;
+
+        label bz_;
 		
 		word epsType_;
 

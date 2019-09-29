@@ -92,12 +92,27 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 
         scalar utauw = sqrt(nuPsiw*magGradUw[faceI] + SMALL);
         scalar kPlus = ks_*utauw/nuw[faceI];
+
+        label psize = kr.boundaryField()[patchI].size();
+
+        if(faceI < bz_){
+            kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+        }
+
+        if(faceI > ((psize-1)-bz_)){
+            kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+        }
+        
 		
-		if(nutExp_ == "default"){			
-           minT = 6.0*sqrt(nuw[faceI]/epsr[faceCellI]);
-		   T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL),minT);
-		   nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
-		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
+		if(nutExp_ == "default"){	
+            if(kPlus > 5.5){		
+               minT = 6.0*sqrt(nuw[faceI]/epsr[faceCellI]);
+    		   T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL),minT);
+    		   nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+    		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
+            }else{
+               nutw[faceI] = 1.0e-15;
+            }
 		}
 
         if(nutExp_ == "lam"){
@@ -148,6 +163,7 @@ nutLowReRoughWallTPFvPatchScalarField
 :
     nutWallFunctionFvPatchScalarField(p, iF),
     ks_(pTraits<scalar>::zero),
+    bz_(0),
     roughnessConstant_(pTraits<scalar>::zero),
     roughnessFudgeFactor_(pTraits<scalar>::zero),
 	nutExp_("default")
@@ -165,6 +181,7 @@ nutLowReRoughWallTPFvPatchScalarField
 :
     nutWallFunctionFvPatchScalarField(ptf, p, iF, mapper),
     ks_(ptf.ks_),
+    bz_(ptf.bz_),
     roughnessConstant_(ptf.roughnessConstant_),
     roughnessFudgeFactor_(ptf.roughnessFudgeFactor_),
 	nutExp_(ptf.nutExp_)
@@ -181,6 +198,7 @@ nutLowReRoughWallTPFvPatchScalarField
 :
     nutWallFunctionFvPatchScalarField(p, iF, dict),
     ks_(dict.lookupOrDefault<scalar>("ks",0.0)),
+    bz_(dict.lookupOrDefault<scalar>("bz",0)),
     roughnessConstant_(dict.lookupOrDefault<scalar>("roughnessConstant",0.0)),
     roughnessFudgeFactor_(dict.lookupOrDefault<scalar>("roughnessFudgeFactor",0.0)),
 	nutExp_(dict.lookupOrDefault<word>("nutExp","default"))
@@ -195,6 +213,7 @@ nutLowReRoughWallTPFvPatchScalarField
 :
     nutWallFunctionFvPatchScalarField(rwfpsf),
     ks_(rwfpsf.ks_),
+    bz_(rwfpsf.bz_),
     roughnessConstant_(rwfpsf.roughnessConstant_),
     roughnessFudgeFactor_(rwfpsf.roughnessFudgeFactor_),
 	nutExp_(rwfpsf.nutExp_)
@@ -210,6 +229,7 @@ nutLowReRoughWallTPFvPatchScalarField
 :
     nutWallFunctionFvPatchScalarField(rwfpsf, iF),
     ks_(rwfpsf.ks_),
+    bz_(rwfpsf.bz_),
     roughnessConstant_(rwfpsf.roughnessConstant_),
     roughnessFudgeFactor_(rwfpsf.roughnessFudgeFactor_),
 	nutExp_(rwfpsf.nutExp_)
@@ -228,6 +248,8 @@ void nutLowReRoughWallTPFvPatchScalarField::write
     writeLocalEntries(os);
     os.writeKeyword("ks")
         << ks_ << token::END_STATEMENT << nl;
+    os.writeKeyword("bz")
+        << bz_ << token::END_STATEMENT << nl;
     os.writeKeyword("roughnessConstant")
         << roughnessConstant_ << token::END_STATEMENT << nl;
     os.writeKeyword("roughnessFudgeFactor")

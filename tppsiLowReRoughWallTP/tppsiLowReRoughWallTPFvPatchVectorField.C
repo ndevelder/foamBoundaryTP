@@ -79,6 +79,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::writeLocalEntries(Ostream& os) con
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
 	os.writeKeyword("cr") << cr_ << token::END_STATEMENT << nl;
+	os.writeKeyword("bz") << bz_ << token::END_STATEMENT << nl;
 	os.writeKeyword("pswType") << pswType_ << token::END_STATEMENT << nl;
 }
 
@@ -97,6 +98,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(9.8),
 	ks_(0.0),
 	cr_(1.0),
+	bz_(0),
 	pswType_("nut"),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
@@ -118,6 +120,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(ptf.E_),
 	ks_(ptf.ks_),
 	cr_(ptf.cr_),
+	bz_(ptf.bz_),
 	pswType_(ptf.pswType_),
     yPlusLam_(ptf.yPlusLam_)
 {
@@ -138,6 +141,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
 	cr_(dict.lookupOrDefault<scalar>("cr", 1.0)),
+	bz_(dict.lookupOrDefault<label>("bz", 0)),
 	pswType_(dict.lookupOrDefault<word>("pswType", "nut")),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
@@ -156,6 +160,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	cr_(wfpsf.cr_),
+	bz_(wfpsf.bz_),
 	pswType_(wfpsf.pswType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
@@ -175,6 +180,7 @@ tppsiLowReRoughWallTPFvPatchVectorField::tppsiLowReRoughWallTPFvPatchVectorField
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
 	cr_(wfpsf.cr_),
+	bz_(wfpsf.bz_),
 	pswType_(wfpsf.pswType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
@@ -248,7 +254,17 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 			
 		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
         
-		scalar kPlus = ks_*utauw/nuw[faceI];	
+		scalar kPlus = ks_*utauw/nuw[faceI];
+
+		label psize = nutw.size();
+
+		if(faceI < bz_){
+			kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+		}
+
+		if(faceI > ((psize-1)-bz_)){
+			kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+		}
 		
 
 		if(pswType_ == "nut"){
@@ -271,7 +287,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
             if(kPlus <= 5.5){
                 psw[faceI] = vector(0,0,0);
             }else{      
-                psw[faceI] = cr_*0.09*(kr.boundaryField()[patchI][faceI]/epsr.boundaryField()[patchI][faceI] + SMALL)*vort.boundaryField()[patchI][faceI];
+                psw[faceI] = 0.028*(kr.boundaryField()[patchI][faceI]/epsr.boundaryField()[patchI][faceI] + SMALL)*vort.boundaryField()[patchI][faceI];
             }
         }
 		

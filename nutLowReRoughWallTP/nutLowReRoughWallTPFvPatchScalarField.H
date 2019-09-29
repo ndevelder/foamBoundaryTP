@@ -62,6 +62,8 @@ class nutLowReRoughWallTPFvPatchScalarField
             //- Height
             scalar ks_;
 
+            label bz_;
+
             //- Constant
             scalar roughnessConstant_;
 

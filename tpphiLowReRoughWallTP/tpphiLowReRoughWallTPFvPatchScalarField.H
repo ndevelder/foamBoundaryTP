@@ -74,6 +74,8 @@ protected:
 
 		//- Phi/K ratio for rough surfaces
 		scalar pkC_;
+
+        label bz_;
 		
         //- Y+ at the edge of the laminar sublayer
         scalar yPlusLam_;

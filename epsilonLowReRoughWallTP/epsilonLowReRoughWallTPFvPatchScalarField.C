@@ -73,6 +73,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     E_(9.8),
 	ks_(0.0),
 	sr_(0.235),
+	bz_(0),
 	epsType_("rough")
 {
     checkType();
@@ -98,6 +99,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     E_(ptf.E_),
 	ks_(ptf.ks_),
 	sr_(ptf.sr_),
+	bz_(ptf.bz_),
 	epsType_(ptf.epsType_)
 {
     checkType();
@@ -122,6 +124,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
 	sr_(dict.lookupOrDefault<scalar>("sr", 1.0)),
+	bz_(dict.lookupOrDefault<scalar>("bz", 0)),
 	epsType_(dict.lookupOrDefault<word>("epsType", "rough"))
 {
     checkType();
@@ -144,6 +147,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     E_(ewfpsf.E_),
 	ks_(ewfpsf.ks_),
 	sr_(ewfpsf.sr_),
+	bz_(ewfpsf.bz_),
 	epsType_(ewfpsf.epsType_)
 {
     checkType();
@@ -167,6 +171,7 @@ epsilonLowReRoughWallTPFvPatchScalarField::epsilonLowReRoughWallTPFvPatchScalarF
     E_(ewfpsf.E_),
 	ks_(ewfpsf.ks_),
 	sr_(ewfpsf.sr_),
+	bz_(ewfpsf.bz_),
 	epsType_(ewfpsf.epsType_)
 {
     checkType();
@@ -282,13 +287,24 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];	
+
+			label psize = nutw.size();
+
+			if(faceI < bz_){
+				kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+			}
+
+			if(faceI > ((psize-1)-bz_)){
+				kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+			}
+		
 			
 			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
 			scalar dz = dzm*0.03*ks_;
 
 			
 			// Use epsilon constant region formula
-			if(kPlus<=5.0){
+			if(kPlus<=5.5){
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			}else{
 				epsw[faceI] = pow(min(1,kPlus/90.0),1.5)*0.3*pow((nuw[faceI]+psiDV[faceI])*magGradUw[faceI],1.5)/(0.41*dz + SMALL);
@@ -499,6 +515,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::write(Ostream& os) const
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
 	os.writeKeyword("sr") << sr_ << token::END_STATEMENT << nl;
+	os.writeKeyword("bz") << bz_ << token::END_STATEMENT << nl;
 	os.writeKeyword("epsType") << epsType_ << token::END_STATEMENT << nl;
 }
 

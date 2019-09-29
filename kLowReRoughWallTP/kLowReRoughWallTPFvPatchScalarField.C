@@ -78,6 +78,7 @@ void kLowReRoughWallTPFvPatchScalarField::writeLocalEntries(Ostream& os) const
     os.writeKeyword("kappa") << kappa_ << token::END_STATEMENT << nl;
     os.writeKeyword("E") << E_ << token::END_STATEMENT << nl;
 	os.writeKeyword("ks") << ks_ << token::END_STATEMENT << nl;
+    os.writeKeyword("bz") << bz_ << token::END_STATEMENT << nl;
 	os.writeKeyword("kType") << kType_ << token::END_STATEMENT << nl;
 }
 
@@ -95,6 +96,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(0.41),
     E_(9.8),
 	ks_(0.0),
+    bz_(0),
 	kType_("linear"),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
@@ -115,6 +117,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(ptf.kappa_),
     E_(ptf.E_),
 	ks_(ptf.ks_),
+    bz_(ptf.bz_),
 	kType_(ptf.kType_),
     yPlusLam_(ptf.yPlusLam_)
 {
@@ -134,6 +137,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(dict.lookupOrDefault<scalar>("kappa", 0.41)),
     E_(dict.lookupOrDefault<scalar>("E", 9.8)),
 	ks_(dict.lookupOrDefault<scalar>("ks", 0.0)),
+    bz_(dict.lookupOrDefault<scalar>("bz", 0)),
 	kType_(dict.lookupOrDefault<word>("kType", "linear")),
     yPlusLam_(calcYPlusLam(kappa_, E_))
 {
@@ -151,6 +155,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+    bz_(wfpsf.bz_),
 	kType_(wfpsf.kType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
@@ -169,6 +174,7 @@ kLowReRoughWallTPFvPatchScalarField::kLowReRoughWallTPFvPatchScalarField
     kappa_(wfpsf.kappa_),
     E_(wfpsf.E_),
 	ks_(wfpsf.ks_),
+    bz_(wfpsf.bz_),
 	kType_(wfpsf.kType_),
     yPlusLam_(wfpsf.yPlusLam_)
 {
@@ -234,6 +240,18 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
         scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
+
+
+        label psize = nutw.size();
+
+        if(faceI < bz_){
+            kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+        }
+
+        if(faceI > ((psize-1)-bz_)){
+            kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+        }
+        
 		
 		if(kPlus <= 5.5){
 		

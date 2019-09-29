@@ -71,6 +71,8 @@ protected:
 		
 		//- Ks roughness sandgrain height
 		scalar ks_;
+
+        label bz_;
 		
 		//- kType choice of interpolation on kPlus
 		word kType_;

@@ -74,6 +74,8 @@ protected:
 		
 		//- PsiW Roughness Constant
 		scalar cr_;
+
+        label bz_;
 		
 		word pswType_;
 
