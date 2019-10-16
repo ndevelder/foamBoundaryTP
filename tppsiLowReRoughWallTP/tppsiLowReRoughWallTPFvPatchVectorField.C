@@ -285,7 +285,7 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
             if(kPlus <= 2.25){
                 psw[faceI] = vector(0,0,0);
             }else{      
-    			psw[faceI] = (1.0 + cr_*(pow(1.0/kPlus, 0.333)))*(0.21*tpr.boundaryField()[patchI][faceI]*(kr.boundaryField()[patchI][faceI])/(epsr.boundaryField()[patchI][faceI] + SMALL))*vort.boundaryField()[patchI][faceI];
+    			psw[faceI] = (1.0 + 0.15 + cr_*(pow(90.0/kPlus, 0.5)))*(0.21*tpr.boundaryField()[patchI][faceI]*(kr.boundaryField()[patchI][faceI])/(epsr.boundaryField()[patchI][faceI] + SMALL))*vort.boundaryField()[patchI][faceI];
     		} 
         } 
 

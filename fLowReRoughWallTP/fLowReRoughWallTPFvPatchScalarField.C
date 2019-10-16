@@ -240,10 +240,8 @@ void fLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
         label faceCellI = patch().faceCells()[faceI];		
 		
-		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
-		scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
         scalar kPlus = ks_*utauw/nuw[faceI];
-		
 		
 		scalar iTime = min(epsr[faceCellI]/(kr[faceCellI]+ROOTVSMALL), 1.0/(6.0*(sqrt(nuw[faceI]/(epsr[faceCellI] + ROOTVSMALL)))));
 		scalar tTime = kr[faceCellI]/epsr[faceCellI];
