@@ -92,27 +92,13 @@ nutLowReRoughWallTPFvPatchScalarField::calcNut() const
 
         scalar utauw = sqrt(nuPsiw*magGradUw[faceI] + SMALL);
         scalar kPlus = ks_*utauw/nuw[faceI];
-
-        label psize = kr.boundaryField()[patchI].size();
-
-        if(faceI < bz_){
-            kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
-        }
-
-        if(faceI > ((psize-1)-bz_)){
-            kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
-        }
         
 		
 		if(nutExp_ == "default"){	
-            if(kPlus > 5.5){		
-               minT = 6.0*sqrt(nuw[faceI]/epsr[faceCellI]);
-    		   T = max(kr[faceCellI]/(epsr[faceCellI]+SMALL),minT);
-    		   nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
-    		   nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
-            }else{
-               nutw[faceI] = 1.0e-15;
-            }
+            //minT = 6.0*sqrt(nuw[faceI]/(epsr[faceCellI]+SMALL));
+    		T = (kr[faceCellI]/(epsr[faceCellI]+SMALL));
+    		nutw[faceI] = cMuBc*kr.boundaryField()[patchI][faceI]*tpr.boundaryField()[patchI][faceI]*T;
+    		nutw[faceI] = min(nutw[faceI],nRMax*nuw[faceI]);
 		}
 
         if(nutExp_ == "lam"){

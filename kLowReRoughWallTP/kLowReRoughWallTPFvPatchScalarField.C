@@ -216,11 +216,11 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
     const vectorField GradUw = Uw.snGrad();
     const scalarField magGradUw = mag(GradUw);
-	
-	const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
-	const scalarField magPsiw = mag(tppsiw.boundaryField()[patchI])*kr.boundaryField()[patchI];
-	const scalarField psiDV = magPsiw/(magGradUw + SMALL);	
     
+    const volVectorField& tppsiw =  db().lookupObject<volVectorField>("tppsi");
+    volVectorField Psiw = (tppsiw*kr);
+    const scalarField magPsiw = mag(Psiw.boundaryField()[patchI]);
+    const scalarField psiDV = magPsiw/(magGradUw + SMALL);
 	
 	tmp<scalarField> tkw(new scalarField(nutw.size()));
 	scalarField& kw = tkw();
@@ -237,51 +237,69 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
         label faceCellI = patch().faceCells()[faceI];		
 		
-		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
-        scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+
         scalar kPlus = ks_*utauw/nuw[faceI];
 
 
-        label psize = nutw.size();
-
-        if(faceI < bz_){
-            kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
+        if(kType_ == "linear"){
+            if(kPlus <= 2.25){
+                kw[faceI] = 1e-10;
+            }else{
+                kw[faceI] = max(min(1.0,(kPlus-2.25)/90.0),SMALL)*nuEffw*magGradUw[faceI]/0.3;
+            }
+        }else if(kType_ == "aupoix"){
+            //Info << "Using aupoix" << endl;
+            if(kPlus <= 2.25){
+                kw[faceI] = 1e-10;
+            }else{
+                scalar kpw = max(1.0e-10,(1.0/0.3)*tanh(((log((kPlus-2.25)/30.0)/log(10.0))+1.0-tanh((kPlus-2.25)/125.0))*tanh((kPlus-2.25)/125.0)));
+                kw[faceI] = kpw*(nuEffw*magGradUw[faceI]);
+            }
         }
-
-        if(faceI > ((psize-1)-bz_)){
-            kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
+        else{
+            kw[faceI] = max(min(1.0,kPlus/90.0),SMALL)*nuEffw*magGradUw[faceI]/0.3;
         }
-        
 		
-		if(kPlus <= 5.5){
+		// if(kPlus <= 5.5){
 		
-			kw[faceI] = 1e-10;
+		// 	kw[faceI] = 1e-10;
 		
-		}else{
+		// }else{
 					
-			if(kType_ == "quad"){
-				kw[faceI] = min(1.0,pow((kPlus-5.0)/90.0,2.0))*nuPsiw*magGradUw[faceI]/0.3;
-			}
-			else if(kType_ == "linear"){
-				kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*nuPsiw*magGradUw[faceI]/0.3;
-			}
-			else{
-				kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*nuPsiw*magGradUw[faceI]/0.3;
-			}			
-		}
+		// 	if(kType_ == "quad"){
+		// 		kw[faceI] = min(1.0,pow((kPlus-5.0)/90.0,2.0))*nuPsiw*magGradUw[faceI]/0.3;
+		// 	}
+		// 	else if(kType_ == "linear"){
+		// 		kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*(nuw[faceI]*magGradUw[faceI] + magPsiw[faceI])/0.3;
+		// 	}
+  //           else if(kType_ == "aupoix"){
+  //               scalar kpw = max(1.0e-10,(1.0/0.3)*min(1.37,tanh(((log(kPlus/30.0)/log(10.0))+1.0-tanh(kPlus/125.0))*tanh(kPlus/125.0))));
+  //               kw[faceI] = kpw*(nuw[faceI]*magGradUw[faceI] + magPsiw[faceI]);
+  //           }
+		// 	else{
+		// 		kw[faceI] = min(1.0,(kPlus-5.0)/90.0)*nuPsiw*magGradUw[faceI]/0.3;
+		// 	}			
+		// }
+
+
 		
 		kpW = kw[faceI];
 		kpP = kPlus;
 		npW = nuPsiw;
 		du = magGradUw[faceI];
-		//Info << kw[faceI] << " | " << magGradUw[faceI] << " | " << nuEffw << " | " << kPlus << endl;
-		
+
+        //if(patch().name() == "FOIL_LEAD"){
+		//  Info << kw[faceI] << " | " << magGradUw[faceI] << " | " << nuPsiw << " | "  << nuEffw << " | " << kPlus << endl;
+		//}
+
 		//if(patch().name() == "FOIL_LEAD"){
 			//Pout<< faceI << " kw: "<<  kw[faceI] << " kPlus: "<<  kPlus << " nu + nut: "<< nuw[faceI]+nutw.boundaryField()[patchI][faceI] << "magVort: "<< mag(vort[faceCellI]) <<endl;
 			//Pout<< "Vorticity W1: " << vort[faceCellI] << "  Vorticity W2: " << vortPI[faceI] <<endl;
 		//}
     }
 	
+
 	//Info << "kw: " <<  kpW << " kPlus: " << kpP << " nuPsiw: " << npW << " mdu: " << du  << endl;
 	
 	operator==(kw);

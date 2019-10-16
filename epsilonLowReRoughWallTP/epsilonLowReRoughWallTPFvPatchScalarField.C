@@ -203,7 +203,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const volScalarField& kr = db().lookupObject<volScalarField>("k");
 	const volScalarField& ksr = db().lookupObject<volScalarField>("kSqrt");
 
-	scalarField gradkSqrt = ksr.boundaryField()[patchI].snGrad();
+	const scalarField gradkSqrt = mag(ksr.boundaryField()[patchI].snGrad());
 	
 	const volScalarField& prodr = db().lookupObject<volScalarField>("tpProd");
 	const volScalarField& epsr = db().lookupObject<volScalarField>("epsilon");
@@ -280,39 +280,64 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		
 		forAll(nutw, faceI)
 		{
-			//scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
 			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
 			
 			//label faceCellI = patch().faceCells()[faceI];		
 			
-			scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
 			scalar kPlus = ks_*utauw/nuw[faceI];	
-
-			label psize = nutw.size();
-
-			if(faceI < bz_){
-				kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
-			}
-
-			if(faceI > ((psize-1)-bz_)){
-				kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
-			}
 		
 			
 			scalar dzm = min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
 			scalar dz = dzm*0.03*ks_;
 
-			
+
 			// Use epsilon constant region formula
-			if(kPlus<=5.5){
+			if(kPlus<=2.25){
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			}else{
-				epsw[faceI] = pow(min(1,kPlus/90.0),1.5)*0.3*pow((nuw[faceI]+psiDV[faceI])*magGradUw[faceI],1.5)/(0.41*dz + SMALL);
+				epsw[faceI] = pow(min(1,kPlus/90.0),1.0)*0.3*pow(nuEffw*magGradUw[faceI],1.5)/(0.41*dz + SMALL);
 				//epsw[faceI] = 0.0493*pow(kr[faceCellI],1.5)/(0.41*dz + SMALL);
 			}
 
-			pdeout = pde[faceI];
+			pdeout = pde[faceI];  
 			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]); 
+			kpout = kPlus;
+			
+		}
+		
+		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
+	}
+
+	if(epsType_ == "aupoix"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			//label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];	
+
+			
+			scalar epmw = (300.0/pow(kPlus,2.0))*(1.0/(tanh(15.0/(4.0*kPlus)))) + (191.0/kPlus)*(1.0-exp(-kPlus/250.0));
+			scalar kpw = max(1.0e-10,(1.0/0.3)*tanh(((log(kPlus/30.0)/log(10.0))+1.0-tanh(kPlus/125.0))*tanh(kPlus/125.0)));
+
+			
+			// Use epsilon constant region formula
+			if(kPlus<=2.25){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = 0.09*kpw*epmw*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI];
+				//epsw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*epmw*nuEffw*magGradUw[faceI]/nuw[faceI];
+			}
+
+			pdeout = pde[faceI];
+			epW = epsw[faceI];  
 			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
 			kpout = kPlus;
 			
@@ -328,7 +353,7 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		{
 			//label faceCellI = patch().faceCells()[faceI];
 		
-			epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);  
 		}
 		
 	}

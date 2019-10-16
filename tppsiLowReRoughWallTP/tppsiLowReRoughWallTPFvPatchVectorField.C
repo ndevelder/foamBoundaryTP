@@ -252,26 +252,16 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
 			
 		label faceCellI = patch().faceCells()[faceI];		
 			
-		scalar utauw = sqrt(nuPsiw*magGradUw[faceI]);
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
         
 		scalar kPlus = ks_*utauw/nuw[faceI];
 
-		label psize = nutw.size();
-
-		if(faceI < bz_){
-			kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
-		}
-
-		if(faceI > ((psize-1)-bz_)){
-			kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
-		}
-		
 
 		if(pswType_ == "nut"){
-			if(kPlus <= 5.5){
+			if(kPlus <= 2.25){
 				psw[faceI] = vector(0,0,0);
 			}else{	    
-				psw[faceI] = cr_*nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
+				psw[faceI] = nutw[faceI]*vort.boundaryField()[patchI][faceI]/(kr.boundaryField()[patchI][faceI] + SMALL);
 			}
 		}
 
@@ -291,13 +281,13 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
             }
         }
 		
-		if(pswType_ == "nutplus"){
-			if(kPlus <= 5.5){
-				psw[faceI] = vector(0,0,0);
-			}else{	    
-				psw[faceI] = (1.0 + cr_*(pow(1.0/kPlus, 0.333)))*(0.21*tpr.boundaryField()[patchI][faceI]*(kr.boundaryField()[patchI][faceI])/epsr.boundaryField()[patchI][faceI])*vort.boundaryField()[patchI][faceI];
-			}
-		}  
+		if(pswType_ == "nutplus"){	
+            if(kPlus <= 2.25){
+                psw[faceI] = vector(0,0,0);
+            }else{      
+    			psw[faceI] = (1.0 + cr_*(pow(1.0/kPlus, 0.333)))*(0.21*tpr.boundaryField()[patchI][faceI]*(kr.boundaryField()[patchI][faceI])/(epsr.boundaryField()[patchI][faceI] + SMALL))*vort.boundaryField()[patchI][faceI];
+    		} 
+        } 
 
 		if(pswType_ == "dev"){
 			if(kPlus<=5.5){
@@ -337,6 +327,24 @@ void tppsiLowReRoughWallTPFvPatchVectorField::updateCoeffs()
             }else{      
                 psw[faceI] = (1.0 + cr_)*0.3*min(1.0,sqr(kPlus/90.0))*unitVort[faceI];
             }  
+        }
+
+        if(pswType_ == "tkeplusa"){
+            if(kPlus < 2.25){
+                psw[faceI] = vector(0,0,0);
+            }else{  
+                scalar tkeplus = max(1.0e-10,(1.0/0.3)*tanh(((log(kPlus/30.0)/log(10.0))+1.0-tanh(kPlus/125.0))*tanh(kPlus/125.0)));      
+                psw[faceI] = cr_*(nutw[faceI]/(nuw[faceI]+nutw[faceI]))*(-GradUw[faceI]/magGradUw[faceI])/tkeplus;
+            }
+        }
+
+        if(pswType_ == "tkeplusk"){
+            if(kPlus < 2.25){
+                psw[faceI] = vector(0,0,0);
+            }else{  
+                scalar tkeplus = max(1.0e-10,(1.0/0.3)*min(1.0,kPlus/90.0));      
+                psw[faceI] = cr_*(nutw[faceI]/(nuw[faceI]+nutw[faceI]))*(-GradUw[faceI]/magGradUw[faceI])/tkeplus;
+            }
         }
 		
 		psiwout = psw[faceI];

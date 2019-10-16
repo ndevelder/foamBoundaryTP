@@ -217,10 +217,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 	const fvPatchVectorField& Uw = lookupPatchField<volVectorField, vector>("U");
 	const scalarField magGradUw = mag(Uw.snGrad());
 
-	const volVectorField& tppsiw = db().lookupObject<volVectorField>("tppsi");
-	const scalarField magPsiSqrw = (tppsiw.boundaryField()[patchI] & tppsiw.boundaryField()[patchI])*sqr(kr.boundaryField()[patchI]);
-	const scalarField magPsiw = sqrt(magPsiSqrw + SMALL);
-	const scalarField psiDV = magPsiw/(magGradUw + SMALL);
+	const volVectorField& tppsiw =  db().lookupObject<volVectorField>("tppsi");
+    volVectorField Psiw = (tppsiw*kr);
+	const scalarField magPsiw = mag(Psiw.boundaryField()[patchI]);
+    const scalarField psiDV = magPsiw/(magGradUw + SMALL);
 	
     
     tmp<scalarField> tphw(new scalarField(nutw.size()));
@@ -240,23 +240,12 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
         label faceCellI = patch().faceCells()[faceI];		
 		
 		//scalar utauw = pow(magPsiSqrw[faceI] + SMALL, 0.25);
-		scalar utauw = sqrt(nuPsiw*magGradUw[faceI] + SMALL);
-		scalar utauvw = sqrt(nuw[faceI]*magGradUw[faceI]);
+		scalar utauw = sqrt(nuEffw*magGradUw[faceI] + SMALL);
+
         scalar kPlus = ks_*utauw/nuw[faceI];
         scalar kP = ks_*utauw/nuw[faceI];
         scalar dzero = 0.03*ks_*min(1,pow(kPlus/30.0,0.67))*min(1,pow(kPlus/45.0,0.25))*min(1,pow(kPlus/60.0,0.25));
 
-
-        label psize = nutw.size();
-
-		if(faceI < bz_){
-			kPlus = kPlus*exp(-1.0*((bz_-1)-faceI));
-		}
-
-		if(faceI > ((psize-1)-bz_)){
-			kPlus = kPlus*exp(-1.0*((bz_-1)-((psize-1)-faceI)));
-		}
-		
 
 		
 		if(rType_ == "channel") {
@@ -295,12 +284,17 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			phw[faceI] = pkF;
 
+		}else if(rType_ == "powclean"){
+
+			pkF = pkC_;
+			phw[faceI] = pkF;
+			
 		}else if(rType_ == "pow"){
 			
-			if(kPlus<=5.5){
+			if(kPlus<=2.25){
 			  pkF = 1e-10;
 			}else if(kPlus<=90.0){
-			  pkF = pkC_*pow(min(1.0,(kPlus-5.0)/90.0),0.04);
+			  pkF = pkC_*pow(min(1.0,(kPlus-2.25)/90.0),0.04);
 			}else{
 			  pkF = pkC_;
 			}
@@ -309,10 +303,10 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 		}else if(rType_ == "sqrtpow"){
 			
-			if(kPlus<=5.5){
+			if(kPlus<=2.25){
 			  pkF = 1e-5;
 			}else if(kPlus<=90.0){
-			  pkF = pkC_*pow((kPlus-5.0)/90.0,0.02);
+			  pkF = pkC_*pow((kPlus-2.25)/90.0,0.02);
 			}else{
 			  pkF = pkC_;
 			}
@@ -331,7 +325,53 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 			phw[faceI] = pkF;
 			
-		}else if(rType_ == "develder"){
+		}else if(rType_ == "aupoix"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else{
+			  //pkF = max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*((kPlus-2.25)/1180.0)*(1.0-exp(-((kPlus-2.25)/100.0)))));
+			  pkF = max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*tanh((kPlus-2.25)/800.0)));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "aupoixs"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-5;
+			}else{
+			  //pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*((kPlus-2.25)/1180.0)*(1.0-exp(-((kPlus-2.25)/100.0))))));
+			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*tanh((kPlus-2.25)/800.0))));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "knopp"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else if(kPlus > 90.0){
+			  pkF = max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0)))) + 0.0*(1.0-exp(-(kPlus-90.0)/650.0)));
+			}else{
+			  pkF = max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0)))));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "knopps"){  
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else if(kPlus > 90.0){
+			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0)))) + 0.0*(1.0-exp(-(kPlus-90.0)/650.0))));
+			}else{
+			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0))))));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "develder"){ 
 			
 			if(kPlus<5.001){
 			  pkF = 1e-10;
@@ -345,7 +385,13 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			
 		}else if(rType_ == "fixedratio"){ 
 		
-			phw[faceI] = pkC_;
+			if(kPlus < 2.0){
+			  pkF = (1e-10)*(1.0 - kPlus/2.0) + (kPlus/2.0)*pkC_;
+			}else{
+			  pkF = pkC_;
+			}
+
+			phw[faceI] = pkF;
 
 		}else if(rType_ == "fixed"){ 
 		
