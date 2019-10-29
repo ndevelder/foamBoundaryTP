@@ -342,7 +342,29 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			  pkF = 1e-5;
 			}else{
 			  //pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*((kPlus-2.25)/1180.0)*(1.0-exp(-((kPlus-2.25)/100.0))))));
-			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*tanh((kPlus-2.25)/800.0))));
+			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0)*tanh((kPlus-2.25)/7.0) + 0.0*tanh((kPlus-2.25)/800.0))));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "aupoix2"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else{
+			  //pkF = max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*((kPlus-2.25)/1180.0)*(1.0-exp(-((kPlus-2.25)/100.0)))));
+			  pkF = max(1e-10, pkC_*pow(tanh((kPlus-2.25)/15.0),3.0));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "aupoixs2"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-5;
+			}else{
+			  //pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/15.0) + 0.0*((kPlus-2.25)/1180.0)*(1.0-exp(-((kPlus-2.25)/100.0))))));
+			  pkF = sqrt(max(1e-10, pkC_*pow(tanh((kPlus-2.25)/15.0),3.0 )));
 			} 
 			
 			phw[faceI] = pkF;
@@ -367,6 +389,30 @@ void tpphiLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0)))) + 0.0*(1.0-exp(-(kPlus-90.0)/650.0))));
 			}else{
 			  pkF = sqrt(max(1e-10, pkC_*(tanh((kPlus-2.25)/20.0) - 0.0*(0.8-exp(-(kPlus/300.0))))));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "knoppn"){
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else if(kPlus > 90.0){
+			  pkF = max(1e-10, pkC_*pow(tanh((kPlus-2.25)/14.0),3.0));
+			}else{
+			  pkF = max(1e-10, pkC_*pow(tanh((kPlus-2.25)/14.0),3.0));
+			} 
+			
+			phw[faceI] = pkF;
+			
+		}else if(rType_ == "knoppns"){  
+			
+			if(kPlus<=2.25){
+			  pkF = 1e-10;
+			}else if(kPlus > 90.0){
+			  pkF = sqrt(max(1e-10, pkC_*pow(tanh((kPlus-2.25)/14.0),3.0)));
+			}else{
+			  pkF = sqrt(max(1e-10, pkC_*pow(tanh((kPlus-2.25)/14.0),3.0)));
 			} 
 			
 			phw[faceI] = pkF;

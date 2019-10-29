@@ -256,8 +256,15 @@ void kLowReRoughWallTPFvPatchScalarField::updateCoeffs()
                 scalar kpw = max(1.0e-10,(1.0/0.3)*tanh(((log((kPlus-2.25)/30.0)/log(10.0))+1.0-tanh((kPlus-2.25)/125.0))*tanh((kPlus-2.25)/125.0)));
                 kw[faceI] = kpw*(nuEffw*magGradUw[faceI]);
             }
-        }
-        else{
+        }else if(kType_ == "aupoix2"){
+            //Info << "Using aupoix" << endl;
+            if(kPlus <= 2.25){
+                kw[faceI] = 1e-10;
+            }else{
+                scalar kpw = max(1.0e-10,(1.0/0.3)*tanh(((log((kPlus-2.25)/30.0)/log(8.0)) + 0.5 - 0.5*tanh((kPlus-2.25)/100.0))*tanh((kPlus-2.25)/75.0)));
+                kw[faceI] = kpw*(nuEffw*magGradUw[faceI]);
+            }
+        }else{
             kw[faceI] = max(min(1.0,kPlus/90.0),SMALL)*nuEffw*magGradUw[faceI]/0.3;
         }
 		

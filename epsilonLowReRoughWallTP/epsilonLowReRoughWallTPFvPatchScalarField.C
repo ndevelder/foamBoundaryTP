@@ -311,6 +311,67 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
 	}
 
+
+	if(epsType_ == "devcole"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];	
+			
+			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];	
+
+			scalar epskpf = 0.24;
+
+			if(kPlus<=2.25){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{ 
+				epskpf = 0.15*(pow((1.0/kPlus),0.5) + min(1.0,kPlus/90.0)/(0.41*0.03*kPlus));
+				epsw[faceI] = epskpf*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI];
+			}
+
+			pdeout = pde[faceI];  
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]); 
+			kpout = kPlus;
+			
+		}
+		
+		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
+	}
+
+
+	if(epsType_ == "devniku"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];	
+			
+			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];	
+
+			scalar epskpf = 0.24;
+
+			if(kPlus<=2.25){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{ 
+				epskpf = 0.23*(0.15*pow(min(1,kPlus/90.0),3.0) + min(1.0,kPlus/90.0)/(0.41*0.03*kPlus));
+				epsw[faceI] = epskpf*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI];
+			}
+
+			pdeout = pde[faceI];  
+			epW = epsw[faceI];
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]); 
+			kpout = kPlus;
+			
+		}
+		
+		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
+	}
+
+
 	if(epsType_ == "aupoix"){
 		
 		forAll(nutw, faceI)
@@ -331,6 +392,48 @@ void epsilonLowReRoughWallTPFvPatchScalarField::updateCoeffs()
 			// Use epsilon constant region formula
 			if(kPlus<=2.25){
 				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else{
+				epsw[faceI] = 0.09*kpw*epmw*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI];
+				//epsw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*epmw*nuEffw*magGradUw[faceI]/nuw[faceI];
+			}
+
+			pdeout = pde[faceI];
+			epW = epsw[faceI];  
+			epWS = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			kpout = kPlus;
+			
+		}
+		
+		//Info << "epw: " << epW << " epwS: " << epWS << " pde: " << pdeout << " kP: " << kpout  <<endl;
+	}
+
+
+	if(epsType_ == "aupoix2"){
+		
+		forAll(nutw, faceI)
+		{
+			scalar nuEffw = nuw[faceI]+nutw[faceI];
+			scalar nuPsiw = nuw[faceI]+psiDV[faceI];
+			
+			//label faceCellI = patch().faceCells()[faceI];		
+			
+			scalar utauw = sqrt(nuEffw*magGradUw[faceI]);
+			scalar kPlus = ks_*utauw/nuw[faceI];	
+
+			
+			scalar epmw = (400000.0/pow(kPlus,4.0))*(1.0/(tanh(10000.0/(3.0*pow(kPlus,3.0))))) + (70.0/kPlus)*(1.0-exp(-kPlus/300.0));
+			scalar kpw = max(1.0e-10,(1.0/0.3)*tanh(((log(kPlus/30.0)/log(8.0)) + 0.5 - 0.5*tanh(kPlus/100.0))*tanh(kPlus/75.0)));
+
+			if(kPlus>2.25){
+				epmw = (400000.0/pow((kPlus-2.25),4.0))*(1.0/(tanh(10000.0/(3.0*pow((kPlus-2.25),3.0))))) + (70.0/(kPlus-2.25))*(1.0-exp(-(kPlus-2.25)/300.0));
+				kpw = max(1.0e-10,(1.0/0.3)*tanh(((log((kPlus-2.25)/30.0)/log(8.0)) + 0.5 - 0.5*tanh((kPlus-2.25)/100.0))*tanh((kPlus-2.25)/75.0)));
+			}
+			
+			// Use epsilon constant region formula
+			if(kPlus<=2.25){
+				epsw[faceI] = 2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);
+			}else if(kPlus > 2.25 && kPlus <= 8.0){
+				epsw[faceI] = ((kPlus-2.25)/5.75)*0.09*kpw*epmw*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI] + (1.0 - (kPlus-2.25)/5.75)*2.0*nuw[faceI]*sqr(gradkSqrt[faceI]);  
 			}else{
 				epsw[faceI] = 0.09*kpw*epmw*pow((nuEffw*magGradUw[faceI]),2.0)/nuw[faceI];
 				//epsw[faceI] = 0.09*kr.boundaryField()[patchI][faceI]*epmw*nuEffw*magGradUw[faceI]/nuw[faceI];
